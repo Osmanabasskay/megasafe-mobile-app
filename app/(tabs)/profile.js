@@ -522,11 +522,11 @@ export default function ProfileScreen() {
       {
         text: 'Logout', style: 'destructive', onPress: async () => {
           try {
-            await AsyncStorage.multiSet([
-              ['isLoggedIn', 'false'],
-              ['onboardingDone', 'false'],
-            ]);
-            router.replace('/');
+            await AsyncStorage.setItem('isLoggedIn', 'false');
+            await AsyncStorage.setItem('onboardingDone', 'true');
+            setTimeout(() => {
+              try { router.replace('/'); } catch (navErr) { console.log('[Profile] router.replace failed', navErr); }
+            }, 50);
           } catch (e) {
             console.log('[Profile] Logout error', e);
             Alert.alert('Error', 'Failed to logout');
