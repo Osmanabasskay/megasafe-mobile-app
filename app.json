@@ -20,8 +20,10 @@
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID.",
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone"
-      }
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "NSContactsUsageDescription": "A message that tells the user why the app is requesting access to the user's contacts."
+      },
+      "accessesContactNotes": true
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +36,9 @@
         "USE_FINGERPRINT",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_CONTACTS",
+        "WRITE_CONTACTS"
       ]
     },
     "web": {
@@ -57,6 +61,12 @@
         "expo-image-picker",
         {
           "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow $(PRODUCT_NAME) to access your contacts."
         }
       ]
     ],

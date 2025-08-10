@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { createTRPCRouter, publicProcedure } from '../../create-context';
-import db from '@/../backend/db/json-db';
+import db from '@/backend/db/json-db';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID ?? '';
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN ?? '';
@@ -33,7 +33,7 @@ export const usersRouter = createTRPCRouter({
       z.object({
         phoneNumber: z.string().min(6).max(32),
         code: z.string().min(3).max(10),
-        userData: z.record(z.any()).default({}),
+        userData: z.record(z.string(), z.any()).default({}),
       })
     )
     .mutation(async ({ input }) => {
