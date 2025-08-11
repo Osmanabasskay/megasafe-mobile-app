@@ -59,10 +59,15 @@ export default function AuthScreen() {
         const userData = await AsyncStorage.getItem('userData');
         const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
         const onboardingDone = await AsyncStorage.getItem('onboardingDone');
+        const justLoggedOut = await AsyncStorage.getItem('justLoggedOut');
         setShowOnboarding(onboardingDone !== 'true');
         
+        if (justLoggedOut === 'true') {
+          await AsyncStorage.removeItem('justLoggedOut');
+          setShowOnboarding(false);
+        }
+        
         if (userData && isLoggedIn === 'true') {
-          // User is already logged in, redirect to tabs
           router.replace('/(tabs)');
           return;
         }

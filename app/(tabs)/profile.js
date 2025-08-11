@@ -527,7 +527,8 @@ export default function ProfileScreen() {
           'linkingOtp',
         ];
         await AsyncStorage.multiRemove(keysToRemove);
-        await AsyncStorage.setItem('onboardingDone', 'false');
+        await AsyncStorage.setItem('onboardingDone', 'true');
+        await AsyncStorage.setItem('justLoggedOut', 'true');
         await new Promise((r) => setTimeout(r, 150));
         router.replace('/');
         setTimeout(() => {
