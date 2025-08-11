@@ -520,20 +520,32 @@ export default function ProfileScreen() {
     const doLogout = async () => {
       try {
         const keysToRemove = [
-          'isLoggedIn',
           'userData',
           'biometricEnabled',
           'signupOtp',
           'linkingOtp',
         ];
         await AsyncStorage.multiRemove(keysToRemove);
+        await AsyncStorage.setItem('isLoggedIn', 'false');
         await AsyncStorage.setItem('onboardingDone', 'true');
         await AsyncStorage.setItem('justLoggedOut', 'true');
-        await new Promise((r) => setTimeout(r, 150));
+        await new Promise((r) => setTimeout(r, 120));
+
+        if (Platform.OS === 'web') {
+          try {
+            router.replace('/');
+          } catch {}
+          setTimeout(() => {
+            try { window.history.replaceState(null, '', '/'); } catch {}
+            try { window.location.reload(); } catch {}
+          }, 50);
+          return;
+        }
+
         router.replace('/');
         setTimeout(() => {
           try { router.replace('/'); } catch {}
-        }, 150);
+        }, 120);
       } catch (e) {
         console.log('[Profile] Logout error', e);
         Alert.alert('Error', 'Failed to logout');
