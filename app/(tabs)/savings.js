@@ -1159,8 +1159,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
-    color: '#00157f',
+    color: '#333',
     marginBottom: 5,
   },
   headerSubtitle: {
@@ -1185,8 +1184,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
-    color: '#00157f',
+    color: '#333',
     flex: 1,
   },
   deleteIconButton: {
@@ -1214,7 +1212,6 @@ const styles = StyleSheet.create({
   summaryAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
     color: '#333',
     marginTop: 8,
     marginBottom: 4,
@@ -1246,7 +1243,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
     marginLeft: 8,
   },
   
@@ -1257,8 +1253,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
-    color: '#00157f',
+    color: '#333',
     marginBottom: 15,
   },
   
@@ -1686,8 +1681,7 @@ const styles = StyleSheet.create({
   goalDetailsName: {
     fontSize: 24,
     fontWeight: 'bold',
-    fontFamily: 'Montserrat',
-    color: '#00157f',
+    color: '#333',
     marginBottom: 4,
   },
   goalCategory: {

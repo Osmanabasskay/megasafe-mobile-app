@@ -114,17 +114,7 @@ export default function HomeScreen() {
     { key: 'settings', label: 'Settings', icon: SettingsIcon, color: '#374151', bg: ['#E5E7EB', '#D1D5DB'], onPress: () => router.push('/(tabs)/profile'), testID: 'goSettings' },
   ];
 
-  const currency = (n) => {
-    try {
-      return `NLe ${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(Number(n ?? 0))}`;
-    } catch (e) {
-      try {
-        return `NLe ${Number(n ?? 0).toFixed(2)}`;
-      } catch {
-        return `NLe 0.00`;
-      }
-    }
-  };
+  const currency = (n) => `NLe ${new Intl.NumberFormat('en-SL', { maximumFractionDigits: 2 }).format(n)}`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -226,9 +216,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
 
   headerCard: { margin: 20, marginBottom: 10, borderRadius: 18, padding: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 4 },
-  headerGreet: { color: '#E5E7EB', fontSize: 16, fontWeight: '700' },
+  headerGreet: { color: '#E5E7EB', fontSize: 16, fontWeight: '700', fontFamily: 'Inter' },
   balanceLabel: { color: '#C7D2FE', marginTop: 6 },
-  balanceValue: { color: '#fff', fontSize: 28, fontWeight: '800', marginTop: 2 },
+  balanceValue: { color: '#fff', fontSize: 28, fontWeight: '800', marginTop: 2, fontFamily: 'Montserrat' },
   miniTotalsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   miniPill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
   miniPillText: { color: '#E5E7EB', fontWeight: '700' },
@@ -240,13 +230,13 @@ const styles = StyleSheet.create({
   quickAmount: { color: '#052e2b', fontWeight: '900', fontSize: 14 },
 
   section: { paddingHorizontal: 20, marginTop: 18 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: palette.text, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: palette.text, marginBottom: 10, fontFamily: 'Montserrat' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   featureWrap: { width: '33.3333%', padding: 6 },
   featureInner: { backgroundColor: '#fff', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   iconBg: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  tileText: { marginTop: 8, fontWeight: '700', color: palette.text, fontSize: 12, textAlign: 'center' },
+  tileText: { marginTop: 8, fontWeight: '700', color: palette.text, fontSize: 12, textAlign: 'center', fontFamily: 'Montserrat' },
 
   pmCardWrap: { paddingRight: 12, paddingLeft: 4 },
   pmCard: { width: 160, height: 96, backgroundColor: palette.grayCard, borderRadius: 14, padding: 12, alignItems: 'flex-start', justifyContent: 'center' },

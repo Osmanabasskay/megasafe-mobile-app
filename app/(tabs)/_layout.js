@@ -9,7 +9,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#FFA500',
         tabBarInactiveTintColor: '#7c7c7c',
         tabBarStyle: { backgroundColor: '#ffffff' },
-        tabBarLabelStyle: { },
+        tabBarLabelStyle: { fontFamily: 'Montserrat' },
         headerShown: false,
       }}
     >

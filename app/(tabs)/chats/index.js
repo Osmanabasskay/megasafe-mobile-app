@@ -65,10 +65,10 @@ export default function ChatsHome() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
   header: { padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  title: { fontSize: 20, fontWeight: '800', fontFamily: 'Montserrat', color: '#00157f' },
+  title: { fontSize: 20, fontWeight: '800', color: '#333' },
   searchBar: { padding: 12, backgroundColor: '#fff' },
   searchInput: { height: 44, borderWidth: 1, borderColor: '#ddd', borderRadius: 10, paddingHorizontal: 12, backgroundColor: '#fff' },
-  section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, color: '#00157f', fontWeight: '700', fontFamily: 'Montserrat' },
+  section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, color: '#666', fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  rowText: { color: '#111827', fontWeight: '600' },
+  rowText: { color: '#333', fontWeight: '600' },
 });

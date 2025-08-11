@@ -820,11 +820,11 @@ const styles = StyleSheet.create({
 
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
   backBtn: { padding: 6 },
-  screenTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Montserrat', color: '#00157f' },
+  screenTitle: { fontSize: 18, fontWeight: '700', color: '#333' },
 
   headerCard: { backgroundColor: '#fff', padding: 16, margin: 16, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitle: { fontSize: 22, fontWeight: '800', fontFamily: 'Montserrat', color: '#00157f' },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#333' },
   headerSubtitle: { color: '#666', marginTop: 2 },
 
   summaryRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16 },
@@ -834,9 +834,9 @@ const styles = StyleSheet.create({
 
   actionsRow: { padding: 16, gap: 10 },
   primaryBtn: { backgroundColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
-  primaryBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16, fontFamily: 'Montserrat' },
+  primaryBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   secondaryBtn: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
-  secondaryBtnText: { color: '#FFA500', fontWeight: 'bold', fontSize: 16, fontFamily: 'Montserrat' },
+  secondaryBtnText: { color: '#FFA500', fontWeight: 'bold', fontSize: 16 },
 
   limitCard: { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#fff', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   limitText: { color: '#333', fontWeight: '600' },
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginHorizontal: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   cardHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle: { fontWeight: '800', fontFamily: 'Montserrat', color: '#00157f' },
+  cardTitle: { fontWeight: '800', color: '#333' },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   cardText: { color: '#444' },
 
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontWeight: '700', color: '#333', fontSize: 16 },
 
   section: { marginTop: 8 },
-  sectionTitle: { marginHorizontal: 16, marginBottom: 8, fontSize: 16, fontWeight: '700', fontFamily: 'Montserrat', color: '#00157f' },
+  sectionTitle: { marginHorizontal: 16, marginBottom: 8, fontSize: 16, fontWeight: '700', color: '#333' },
   muted: { color: '#777' },
 
   listRowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },

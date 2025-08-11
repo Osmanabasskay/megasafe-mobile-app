@@ -522,52 +522,11 @@ export default function ProfileScreen() {
       {
         text: 'Logout', style: 'destructive', onPress: async () => {
           try {
-            const keysToClear = [
-              'biometricEnabled',
-              'userData',
-              'signupOtp',
-              'linkingOtp',
-              'profilePhoto',
-              'ninNumber',
-              'ninVerified',
-              'nextOfKin',
-              'securityQA',
-              'linkedWallets',
-              'linkedBanks',
-              'payments',
-              'mobileMoney',
-              'walletTx',
-              'loanLedger',
-              'offlineMode',
-              'offlineOutbox',
-              'identityDocs',
-            ];
-            console.log('[Profile] Clearing keys', keysToClear);
-            await AsyncStorage.multiRemove(keysToClear);
             await AsyncStorage.multiSet([
               ['isLoggedIn', 'false'],
-              ['onboardingDone', 'true'],
+              ['onboardingDone', 'false'],
             ]);
-
-            try {
-              if (router?.dismissAll) router.dismissAll();
-            } catch (e) {
-              console.log('[Profile] dismissAll not available', e);
-            }
-
-            let navigated = false;
-            try {
-              router.replace('/');
-              navigated = true;
-            } catch (navErr) {
-              console.log('[Profile] router.replace failed', navErr);
-            }
-
-            if (Platform.OS === 'web') {
-              try { window.location.assign('/'); } catch (e) { console.log('[Profile] window.location.assign failed', e); }
-            } else if (!navigated) {
-              try { router.push('/'); } catch (e) { console.log('[Profile] router.push fallback failed', e); }
-            }
+            router.replace('/');
           } catch (e) {
             console.log('[Profile] Logout error', e);
             Alert.alert('Error', 'Failed to logout');
@@ -1706,7 +1665,7 @@ const styles = StyleSheet.create({
   changePhotoBtn: { position: 'absolute', bottom: -6, right: -6, backgroundColor: '#FFA500', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 6 },
   changePhotoText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 20, fontWeight: '700', fontFamily: 'Montserrat', color: '#00157f' },
+  profileName: { fontSize: 20, fontWeight: '700', color: '#333' },
   profilePhone: { marginTop: 4, color: '#666' },
   editMini: { marginTop: 10, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#fff5e6' },
   editMiniText: { color: '#FFA500', fontWeight: '600' },
@@ -1731,7 +1690,7 @@ const styles = StyleSheet.create({
 
   screenHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderRadius: 12, marginBottom: 16 },
   backBtn: { padding: 4, marginRight: 8 },
-  screenTitle: { fontSize: 18, fontWeight: '700', fontFamily: 'Montserrat', color: '#00157f', alignSelf: 'center' },
+  screenTitle: { fontSize: 18, fontWeight: '700', color: '#333', alignSelf: 'center' },
 
   formWrap: { padding: 20, paddingBottom: 40 },
   flex1: { flex: 1 },
@@ -1761,15 +1720,15 @@ const styles = StyleSheet.create({
   refTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginTop: 10 },
   refSubtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 6 },
   codeBox: { marginTop: 16, borderWidth: 1, borderColor: '#FFA500', backgroundColor: '#fff5e6', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 20 },
-  codeText: { fontSize: 18, fontWeight: '800', fontFamily: 'Montserrat', color: '#FFA500', letterSpacing: 2 },
+  codeText: { fontSize: 18, fontWeight: '800', color: '#FFA500', letterSpacing: 2 },
   refActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
 
   primaryBtn: { backgroundColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 6, paddingHorizontal: 16 },
-  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold', fontFamily: 'Montserrat' },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   secondaryBtn: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 6 },
-  secondaryBtnText: { color: '#FFA500', fontSize: 16, fontWeight: 'bold', fontFamily: 'Montserrat' },
+  secondaryBtnText: { color: '#FFA500', fontSize: 16, fontWeight: 'bold' },
 
-  sectionHeader: { fontSize: 16, fontWeight: '700', fontFamily: 'Montserrat', color: '#00157f', marginBottom: 8 },
+  sectionHeader: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 8 },
   emptyState: { alignItems: 'center', paddingVertical: 18 },
   emptyText: { color: '#777', marginTop: 8 },
   listCard: { backgroundColor: '#fff', borderRadius: 12, padding: 8, marginBottom: 12 },

@@ -97,65 +97,6 @@ export default function GroupsScreen() {
   const [newContactPhone, setNewContactPhone] = useState('');
   const [selectedContactsMap, setSelectedContactsMap] = useState({});
 
-  const normalizePhone = (s) => (s || '').replace(/[^\d+]/g, '');
-
-  const openContactPicker = async () => {
-    try {
-      let deviceContacts = [];
-      if (Platform.OS !== 'web') {
-        try {
-          const Contacts = await import('expo-contacts');
-          const { status } = await Contacts.requestPermissionsAsync();
-          if (status === 'granted') {
-            const { data } = await Contacts.getContactsAsync({ fields: [Contacts.Fields.PhoneNumbers] });
-            deviceContacts = (data || [])
-              .flatMap((c) => {
-                const name = c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim();
-                const phones = (c.phoneNumbers || []).map((p) => normalizePhone(p.number || ''));
-                return phones
-                  .filter((ph) => !!ph)
-                  .map((ph, idx) => ({ id: `${ph}-${idx}`, name: name || ph, phone: ph }));
-              });
-          }
-        } catch (e) { console.log('expo-contacts error', e); }
-      } else if (typeof navigator !== 'undefined' && navigator.contacts && navigator.contacts.select) {
-        try {
-          const picked = await navigator.contacts.select(['name', 'tel'], { multiple: true });
-          deviceContacts = (picked || []).flatMap((c, idx) => {
-            const name = Array.isArray(c.name) ? c.name[0] : (c.name || '');
-            const tels = Array.isArray(c.tel) ? c.tel : (c.tel ? [c.tel] : []);
-            return tels.map((t, i) => ({ id: `${idx}-${i}`, name: name || t, phone: normalizePhone(t) }));
-          });
-        } catch (e) { console.log('web contacts picker error', e); }
-      }
-
-      const raw = await AsyncStorage.getItem('myContacts');
-      const saved = raw ? JSON.parse(raw) : [];
-
-      const merged = [...saved, ...deviceContacts]
-        .filter((c) => c && c.phone)
-        .reduce((acc, c) => {
-          if (!acc.find((x) => x.phone === c.phone)) acc.push({ id: c.phone, name: c.name || c.phone, phone: c.phone });
-          return acc;
-        }, []);
-
-      setContacts(merged);
-      setSelectedContactsMap({});
-      setShowContactPickerModal(true);
-      await AsyncStorage.setItem('myContacts', JSON.stringify(merged));
-    } catch (e) {
-      console.log('openContactPicker error', e);
-      Alert.alert('Contacts', 'Unable to access contacts. You can add contacts manually.');
-      try {
-        const raw = await AsyncStorage.getItem('myContacts');
-        const saved = raw ? JSON.parse(raw) : [];
-        setContacts(Array.isArray(saved) ? saved : []);
-        setSelectedContactsMap({});
-        setShowContactPickerModal(true);
-      } catch {}
-    }
-  };
-
   const frequencyOptions = ['Daily', 'Weekly', 'Monthly'];
   const payoutOptions = ['Automatic', 'Voting'];
   const providerOptions = ['Orange Money', 'Africell Money', 'Qcell Money', 'Manual Collection'];
@@ -1645,7 +1586,15 @@ export default function GroupsScreen() {
               <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={() => { setShowAddMemberModal(true); }} testID="openAddMember">
                 <Text style={styles.createButtonText}>Add Member Manually</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={openContactPicker} testID="openContactPicker">
+              <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={async () => {
+                try {
+                  const raw = await AsyncStorage.getItem('myContacts');
+                  const list = raw ? JSON.parse(raw) : [];
+                  setContacts(Array.isArray(list) ? list : []);
+                  setSelectedContactsMap({});
+                  setShowContactPickerModal(true);
+                } catch (e) { console.log('open contacts', e); }
+              }} testID="openContactPicker">
                 <Text style={styles.createButtonText}>Add From Contacts</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={() => {
