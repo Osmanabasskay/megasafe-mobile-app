@@ -523,7 +523,6 @@ export default function ProfileScreen() {
         text: 'Logout', style: 'destructive', onPress: async () => {
           try {
             const keysToClear = [
-              'isLoggedIn',
               'biometricEnabled',
               'userData',
               'signupOtp',
@@ -545,19 +544,29 @@ export default function ProfileScreen() {
             ];
             console.log('[Profile] Clearing keys', keysToClear);
             await AsyncStorage.multiRemove(keysToClear);
-            await AsyncStorage.setItem('onboardingDone', 'true');
+            await AsyncStorage.multiSet([
+              ['isLoggedIn', 'false'],
+              ['onboardingDone', 'true'],
+            ]);
+
             try {
               if (router?.dismissAll) router.dismissAll();
             } catch (e) {
               console.log('[Profile] dismissAll not available', e);
             }
+
+            let navigated = false;
             try {
               router.replace('/');
+              navigated = true;
             } catch (navErr) {
               console.log('[Profile] router.replace failed', navErr);
             }
+
             if (Platform.OS === 'web') {
-              try { window.location.assign('/'); } catch {}
+              try { window.location.assign('/'); } catch (e) { console.log('[Profile] window.location.assign failed', e); }
+            } else if (!navigated) {
+              try { router.push('/'); } catch (e) { console.log('[Profile] router.push fallback failed', e); }
             }
           } catch (e) {
             console.log('[Profile] Logout error', e);
