@@ -525,7 +525,25 @@ export default function ProfileScreen() {
             const keysToClear = [
               'isLoggedIn',
               'biometricEnabled',
+              'userData',
+              'signupOtp',
+              'linkingOtp',
+              'profilePhoto',
+              'ninNumber',
+              'ninVerified',
+              'nextOfKin',
+              'securityQA',
+              'linkedWallets',
+              'linkedBanks',
+              'payments',
+              'mobileMoney',
+              'walletTx',
+              'loanLedger',
+              'offlineMode',
+              'offlineOutbox',
+              'identityDocs',
             ];
+            console.log('[Profile] Clearing keys', keysToClear);
             await AsyncStorage.multiRemove(keysToClear);
             await AsyncStorage.setItem('onboardingDone', 'true');
             try {
@@ -537,6 +555,9 @@ export default function ProfileScreen() {
               router.replace('/');
             } catch (navErr) {
               console.log('[Profile] router.replace failed', navErr);
+            }
+            if (Platform.OS === 'web') {
+              try { window.location.assign('/'); } catch {}
             }
           } catch (e) {
             console.log('[Profile] Logout error', e);
