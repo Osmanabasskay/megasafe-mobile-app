@@ -1,8 +1,25 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { Home as HomeIcon, Users, PiggyBank, User, HandCoins, MessageCircle } from 'lucide-react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function TabLayout() {
+  const router = useRouter();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
+        if (isLoggedIn !== 'true') {
+          router.replace('/');
+        }
+      } catch (e) {
+        console.log('[Tabs] auth guard error', e);
+        router.replace('/');
+      }
+    })();
+  }, [router]);
+
   return (
     <Tabs
       screenOptions={{
