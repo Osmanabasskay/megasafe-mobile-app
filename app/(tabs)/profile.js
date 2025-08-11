@@ -522,8 +522,10 @@ export default function ProfileScreen() {
         await AsyncStorage.multiSet([
           ['isLoggedIn', 'false'],
           ['onboardingDone', 'false'],
+          ['biometricEnabled', 'false'],
         ]);
         await AsyncStorage.flushGetRequests?.();
+        await new Promise((r) => setTimeout(r, 120));
         router.replace('/');
       } catch (e) {
         console.log('[Profile] Logout error', e);
