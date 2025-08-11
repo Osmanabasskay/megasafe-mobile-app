@@ -517,22 +517,28 @@ export default function ProfileScreen() {
 
   const handleLogout = useCallback(async () => {
     console.log('[Profile] Logout tapped');
+    const doLogout = async () => {
+      try {
+        await AsyncStorage.multiSet([
+          ['isLoggedIn', 'false'],
+          ['onboardingDone', 'false'],
+        ]);
+        await AsyncStorage.flushGetRequests?.();
+        router.replace('/');
+      } catch (e) {
+        console.log('[Profile] Logout error', e);
+        Alert.alert('Error', 'Failed to logout');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      doLogout();
+      return;
+    }
+
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout', style: 'destructive', onPress: async () => {
-          try {
-            await AsyncStorage.multiSet([
-              ['isLoggedIn', 'false'],
-              ['onboardingDone', 'false'],
-            ]);
-            router.replace('/');
-          } catch (e) {
-            console.log('[Profile] Logout error', e);
-            Alert.alert('Error', 'Failed to logout');
-          }
-        }
-      }
+      { text: 'Logout', style: 'destructive', onPress: doLogout },
     ]);
   }, []);
 
