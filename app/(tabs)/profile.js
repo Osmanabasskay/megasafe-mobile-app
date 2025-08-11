@@ -617,6 +617,10 @@ export default function ProfileScreen() {
         <SectionRow icon={<RefreshCw color="#5CCEF4" size={20} />} title="Check for Updates" subtitle={versionLabel} onPress={checkUpdates} right={loading ? <ActivityIndicator size="small" /> : <ChevronRight color="#999" size={18} />} />
       </View>
 
+      <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} testID="logoutBtn">
+        <LogOut color="#fff" size={18} />
+        <Text style={styles.logoutText}>Log out</Text>
+      </TouchableOpacity>
 
     </ScrollView>
   );
