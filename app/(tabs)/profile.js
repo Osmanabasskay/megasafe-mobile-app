@@ -521,15 +521,18 @@ export default function ProfileScreen() {
       try {
         const keysToRemove = [
           'isLoggedIn',
+          'userData',
           'biometricEnabled',
           'signupOtp',
           'linkingOtp',
         ];
         await AsyncStorage.multiRemove(keysToRemove);
         await AsyncStorage.setItem('onboardingDone', 'false');
-        await AsyncStorage.flushGetRequests?.();
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 150));
         router.replace('/');
+        setTimeout(() => {
+          try { router.replace('/'); } catch {}
+        }, 150);
       } catch (e) {
         console.log('[Profile] Logout error', e);
         Alert.alert('Error', 'Failed to logout');
