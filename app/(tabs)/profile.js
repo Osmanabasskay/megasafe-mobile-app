@@ -522,11 +522,22 @@ export default function ProfileScreen() {
       {
         text: 'Logout', style: 'destructive', onPress: async () => {
           try {
-            await AsyncStorage.setItem('isLoggedIn', 'false');
+            const keysToClear = [
+              'isLoggedIn',
+              'biometricEnabled',
+            ];
+            await AsyncStorage.multiRemove(keysToClear);
             await AsyncStorage.setItem('onboardingDone', 'true');
-            setTimeout(() => {
-              try { router.replace('/'); } catch (navErr) { console.log('[Profile] router.replace failed', navErr); }
-            }, 50);
+            try {
+              if (router?.dismissAll) router.dismissAll();
+            } catch (e) {
+              console.log('[Profile] dismissAll not available', e);
+            }
+            try {
+              router.replace('/');
+            } catch (navErr) {
+              console.log('[Profile] router.replace failed', navErr);
+            }
           } catch (e) {
             console.log('[Profile] Logout error', e);
             Alert.alert('Error', 'Failed to logout');
