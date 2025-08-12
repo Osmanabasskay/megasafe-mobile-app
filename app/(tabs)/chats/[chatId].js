@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
-import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause } from 'lucide-react-native';
+import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
@@ -18,6 +18,8 @@ export default function ChatRoom() {
   const [playingId, setPlayingId] = useState(null);
   const soundRef = useRef(null);
   const listRef = useRef(null);
+  const [pendingAudio, setPendingAudio] = useState(null);
+  const waveAnim = useMemo(() => Array.from({ length: 8 }, () => new Animated.Value(0)), []);
 
   useEffect(() => {
     (async () => {
@@ -27,6 +29,17 @@ export default function ChatRoom() {
       } catch (e) { console.log('[Chat] load', e); }
     })();
   }, [chatId]);
+
+  useEffect(() => {
+    if (isRecording) {
+      const animations = waveAnim.map((v, idx) => Animated.loop(Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 350 + idx * 20, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(v, { toValue: 0, duration: 350 + idx * 20, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+      ])));
+      animations.forEach(a => a.start());
+      return () => animations.forEach(a => a.stop());
+    }
+  }, [isRecording, waveAnim]);
 
   const persist = async (next) => {
     try { await AsyncStorage.setItem('chat:'+chatId, JSON.stringify(next)); } catch (e) { console.log('persist err', e); }
@@ -97,7 +110,7 @@ export default function ChatRoom() {
           try {
             const blob = new Blob(chunks, { type: 'audio/webm' });
             const url = URL.createObjectURL(blob);
-            await appendMessage({ id: Date.now().toString(), type: 'audio', uri: url, mime: 'audio/webm', ts: Date.now(), sender: 'you' });
+            setPendingAudio({ uri: url, mime: 'audio/webm' });
             stream.getTracks().forEach(t => t.stop());
             mediaStreamRef.current = null;
           } catch (e) { console.log('web record stop err', e); }
@@ -147,7 +160,7 @@ export default function ChatRoom() {
       setIsRecording(false);
       setRecording(null);
       if (uri) {
-        await appendMessage({ id: Date.now().toString(), type: 'audio', uri, mime: Platform.OS==='ios'?'audio/wav':'audio/m4a', ts: Date.now(), sender: 'you' });
+        setPendingAudio({ uri, mime: Platform.OS==='ios'?'audio/wav':'audio/m4a' });
       }
     } catch (e) { console.log('stop record err', e); setIsRecording(false); setRecording(null); }
   };
@@ -180,6 +193,12 @@ export default function ChatRoom() {
   };
 
   const title = String(chatId||'').length>12 ? `${String(chatId).slice(0,10)}...` : String(chatId||'');
+
+  const sendPendingAudio = async () => {
+    if (!pendingAudio) return;
+    await appendMessage({ id: Date.now().toString(), type: 'audio', uri: pendingAudio.uri, mime: pendingAudio.mime, ts: Date.now(), sender: 'you' });
+    setPendingAudio(null);
+  };
 
   const renderItem = ({ item }) => {
     const isMine = item.sender === 'you';
@@ -234,10 +253,40 @@ export default function ChatRoom() {
           contentContainerStyle={{ padding: 12 }}
           testID="messagesList"
         />
+        {isRecording && (
+          <View style={styles.recordingWrap} testID="recordingWave">
+            <View style={styles.waveRow}>
+              {waveAnim.map((v, idx) => {
+                const height = v.interpolate({ inputRange: [0,1], outputRange: [8, 26] });
+                return <Animated.View key={String(idx)} style={[styles.waveBar, { height }]} />;
+              })}
+            </View>
+            <TouchableOpacity onPress={stopRecording} style={[styles.iconBtn, styles.stopBtn]} testID="stopRecBtn">
+              <Text style={{ color: '#fff', fontWeight: '700' }}>Stop</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {!!pendingAudio && !isRecording && (
+          <View style={styles.pendingWrap} testID="pendingAudio">
+            <TouchableOpacity onPress={() => togglePlayback({ id: 'preview', uri: pendingAudio.uri })} style={styles.audioRow}>
+              <Play color="#333" size={18} />
+              <Text style={styles.pendingText}>Preview voice note</Text>
+            </TouchableOpacity>
+            <View style={styles.pendingActions}>
+              <TouchableOpacity onPress={() => setPendingAudio(null)} style={[styles.iconBtn, styles.discardBtn]} testID="discardAudio">
+                <X color="#fff" size={16} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendPendingAudio} style={[styles.iconBtn, styles.confirmBtn]} testID="sendAudio">
+                <Check color="#fff" size={16} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <View style={styles.inputRow}>
           <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={[styles.iconBtn, isRecording && styles.recActive]} testID="micBtn">
             <Mic color={isRecording?'#fff':'#555'} size={18} />
           </TouchableOpacity>
+          <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="Message" testID="msgInput" />
           <TouchableOpacity onPress={captureWithCamera} style={styles.iconBtn} testID="cameraBtn">
             <CameraIcon color="#555" size={18} />
           </TouchableOpacity>
@@ -247,7 +296,6 @@ export default function ChatRoom() {
           <TouchableOpacity onPress={pickDocument} style={styles.iconBtn} testID="docPickerBtn">
             <Paperclip color="#555" size={18} />
           </TouchableOpacity>
-          <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="Message" testID="msgInput" />
           <TouchableOpacity style={styles.sendBtn} onPress={send} testID="sendBtn">
             <Send color="#fff" size={18} />
           </TouchableOpacity>
@@ -279,4 +327,13 @@ const styles = StyleSheet.create({
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   audioRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   image: { width: 220, height: 220, borderRadius: 12, backgroundColor: '#e5e7eb' },
+  recordingWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff3f3', borderTopWidth: 1, borderTopColor: '#fee2e2' },
+  waveRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, flex: 1 },
+  waveBar: { width: 4, backgroundColor: '#ef4444', borderRadius: 2 },
+  stopBtn: { backgroundColor: '#ef4444', marginRight: 0 },
+  pendingWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#F3F4F6' },
+  pendingText: { color: '#333', fontWeight: '600' },
+  pendingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  discardBtn: { backgroundColor: '#9CA3AF', marginRight: 0 },
+  confirmBtn: { backgroundColor: '#10B981', marginRight: 0 },
 });
