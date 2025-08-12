@@ -18,6 +18,7 @@ const palette = {
 export default function ReverseTransactionScreen() {
   const [payments, setPayments] = useState([]);
   const [selectedId, setSelectedId] = useState('');
+  const [amount, setAmount] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,6 +36,16 @@ export default function ReverseTransactionScreen() {
     })();
   }, []);
 
+  const sentByMe = useMemo(() => {
+    try {
+      return (payments || []).filter((p) => !!p?.payerId || p?.fromMe === true || p?.madeByMe === true);
+    } catch {
+      return [];
+    }
+  }, [payments]);
+
+  const recentThree = useMemo(() => (sentByMe || []).slice(0, 3), [sentByMe]);
+
   const selected = useMemo(() => (payments || []).find((p) => p.id === selectedId), [payments, selectedId]);
 
   const isWithinOneHour = useMemo(() => {
@@ -47,7 +58,16 @@ export default function ReverseTransactionScreen() {
     }
   }, [selected]);
 
-  const canSubmit = !!selected && !!password && !submitting && isWithinOneHour && !selected?.reversed;
+  const amountMatches = useMemo(() => {
+    if (!selected) return false;
+    const a = Number(amount || 0);
+    const b = Number(selected?.amount || 0);
+    return Number.isFinite(a) && a > 0 && Math.abs(a - b) < 0.01;
+  }, [amount, selected]);
+
+  const userIsOwner = !!(selected?.payerId || selected?.fromMe === true || selected?.madeByMe === true);
+
+  const canSubmit = !!selected && !!password && amountMatches && userIsOwner && !submitting && isWithinOneHour && !selected?.reversed;
 
   const formatAmount = useCallback((n) => {
     const val = Number(n || 0);
@@ -68,6 +88,8 @@ export default function ReverseTransactionScreen() {
   const attemptReverse = async () => {
     if (!selected) return;
     if (!password) { Alert.alert('Required', 'Enter your password to proceed'); return; }
+    if (!userIsOwner) { Alert.alert('Not allowed', 'You can only reverse payments you made.'); return; }
+    if (!amountMatches) { Alert.alert('Amount mismatch', 'Entered amount must match the original transaction amount.'); return; }
     if (!isWithinOneHour) { Alert.alert('Unavailable', 'Reversal is only possible within 1 hour of the original transaction'); return; }
     if (selected.reversed) { Alert.alert('Already reversed', 'This transaction was already reversed'); return; }
 
@@ -92,6 +114,7 @@ export default function ReverseTransactionScreen() {
 
       setPayments(list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       setPassword('');
+      setAmount('');
       Alert.alert('Reversal requested', 'If the reversal is successful, funds will be returned to your account.');
       router.back();
     } catch (e) {
@@ -111,9 +134,13 @@ export default function ReverseTransactionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.sectionTitle}>Select Transaction</Text>
+        <Text style={styles.sectionTitle}>Your Recent Payments (last 3)</Text>
 
-        {(payments || []).slice(0, 15).map((tx) => (
+        {recentThree.length === 0 ? (
+          <Text style={[styles.txSub, { marginHorizontal: 16 }]}>No recent outgoing payments found.</Text>
+        ) : null}
+
+        {recentThree.map((tx) => (
           <TouchableOpacity
             key={tx.id}
             onPress={() => setSelectedId(tx.id === selectedId ? '' : tx.id)}
@@ -123,7 +150,7 @@ export default function ReverseTransactionScreen() {
             <Image source={{ uri: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=64&h=64&fit=crop' }} style={styles.avatar} />
             <View style={{ flex: 1 }}>
               <Text style={styles.txName}>{tx.note?.replace(/^Group Payment - /, '') || 'Payment'}</Text>
-              <Text style={styles.txSub} numberOfLines={1}>{(tx.payerId ? 'Sent' : 'Sent')} • {formatAmount(tx.amount)} • {formatDate(tx.date)}</Text>
+              <Text style={styles.txSub} numberOfLines={1}>Sent • {formatAmount(tx.amount)} • {formatDate(tx.date)}</Text>
             </View>
             <Text style={[styles.chev, selectedId === tx.id && { color: palette.primary }]}>›</Text>
           </TouchableOpacity>
@@ -150,6 +177,19 @@ export default function ReverseTransactionScreen() {
           <View style={{ marginTop: 12 }}>
             <View style={styles.inputBox}>
               <TextInput
+                placeholder="Enter amount"
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+                style={styles.input}
+                testID="reverseAmount"
+              />
+            </View>
+          </View>
+
+          <View style={{ marginTop: 12 }}>
+            <View style={styles.inputBox}>
+              <TextInput
                 placeholder="Enter your password"
                 secureTextEntry
                 value={password}
@@ -158,6 +198,20 @@ export default function ReverseTransactionScreen() {
                 testID="reversePassword"
               />
             </View>
+          </View>
+
+          <View style={{ marginTop: 12 }}>
+            <Text style={styles.confirmText}>Attachments (optional)</Text>
+            <View style={styles.inputBox}>
+              <TextInput
+                placeholder="Paste attachment image URL (e.g. receipt)"
+                value={''}
+                editable={false}
+                style={[styles.input, { color: '#9CA3AF' }]}
+                testID="attachmentsPlaceholder"
+              />
+            </View>
+            <Text style={[styles.txSub, { marginTop: 6 }]}>You can add attachments in a future update.</Text>
           </View>
         </View>
 
