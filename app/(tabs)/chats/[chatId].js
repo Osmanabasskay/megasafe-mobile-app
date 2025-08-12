@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing } from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
 import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check, Smile, MapPin, User as UserIcon, FileText, Headphones, Calendar, BarChart3 } from 'lucide-react-native';
@@ -20,6 +20,13 @@ export default function ChatRoom() {
   const listRef = useRef(null);
   const [pendingAudio, setPendingAudio] = useState(null);
   const [showAttach, setShowAttach] = useState(false);
+  const [showPollForm, setShowPollForm] = useState(false);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [pollQ, setPollQ] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDateTime, setEventDateTime] = useState('');
+  const [eventNote, setEventNote] = useState('');
   const waveAnim = useMemo(() => Array.from({ length: 8 }, () => new Animated.Value(0)), []);
 
   useEffect(() => {
@@ -243,6 +250,25 @@ export default function ChatRoom() {
     } catch (e) { console.log('contact err', e); }
   };
 
+  const onVote = async (msgId, idx) => {
+    try {
+      const next = messages.map(m => {
+        if (m.id !== msgId) return m;
+        if (m.type !== 'poll') return m;
+        if (!m.results) m.results = Array.from({ length: m.options.length }, () => 0);
+        if (typeof m.votedIndex === 'number') {
+          if (m.votedIndex === idx) return m;
+          m.results[m.votedIndex] = Math.max(0, (m.results[m.votedIndex] || 0) - 1);
+        }
+        m.results[idx] = (m.results[idx] || 0) + 1;
+        m.votedIndex = idx;
+        return { ...m };
+      });
+      setMessages(next);
+      await persist(next);
+    } catch (e) { console.log('vote err', e); }
+  };
+
   const renderItem = ({ item }) => {
     const isMine = item.sender === 'you';
     if (item.type === 'image') {
@@ -271,6 +297,43 @@ export default function ChatRoom() {
           <TouchableOpacity style={styles.audioRow} onPress={() => togglePlayback(item)}>
             {isPlaying ? <Pause color={isMine?'#fff':'#333'} size={18} /> : <Play color={isMine?'#fff':'#333'} size={18} />}
             <Text style={[styles.text, isMine?styles.textMine:styles.textTheirs]}>{isPlaying? 'Playing...' : 'Voice message'}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.time, isMine?styles.timeMine:styles.timeTheirs]}>{new Date(item.ts).toLocaleTimeString()}</Text>
+        </View>
+      );
+    }
+    if (item.type === 'poll') {
+      const total = (item.results||[]).reduce((a,b)=>a+b,0);
+      return (
+        <View style={[styles.bubble, isMine?styles.mine:styles.theirs]}>
+          <Text style={[styles.text, isMine?styles.textMine:styles.textTheirs, { fontWeight: '700', marginBottom: 8 }]}>{item.question}</Text>
+          {(item.options||[]).map((opt, idx) => {
+            const count = item.results?.[idx] || 0;
+            const percent = total>0 ? Math.round((count/total)*100) : 0;
+            const selected = item.votedIndex === idx;
+            return (
+              <TouchableOpacity key={String(idx)} onPress={() => onVote(item.id, idx)} style={[styles.pollOption, selected && styles.pollOptionSelected]} testID={`pollOpt-${idx}`}>
+                <Text style={[styles.pollLabel, isMine?styles.textMine:styles.textTheirs]}>{opt}</Text>
+                <Text style={[styles.pollCount, isMine?styles.textMine:styles.textTheirs]}>{percent}% • {count}</Text>
+              </TouchableOpacity>
+            );
+          })}
+          <Text style={[styles.time, isMine?styles.timeMine:styles.timeTheirs]}>{new Date(item.ts).toLocaleTimeString()}</Text>
+        </View>
+      );
+    }
+    if (item.type === 'event') {
+      const when = item.when ? new Date(item.when) : null;
+      return (
+        <View style={[styles.bubble, isMine?styles.mine:styles.theirs]}>
+          <View style={styles.rowCenter}>
+            <Calendar color={isMine?'#fff':'#333'} size={18} />
+            <Text style={[styles.text, isMine?styles.textMine:styles.textTheirs, { fontWeight: '700' }]}>{item.title||'Event'}</Text>
+          </View>
+          {!!item.note && (<Text style={[styles.text, isMine?styles.textMine:styles.textTheirs]}>{item.note}</Text>)}
+          {!!when && (<Text style={[styles.text, isMine?styles.textMine:styles.textTheirs, { marginTop: 6 }]}>{when.toLocaleString()}</Text>)}
+          <TouchableOpacity onPress={() => Alert.alert('Reminder', 'Reminder set locally.')} style={[styles.eventBtn, { backgroundColor: isMine?'rgba(255,255,255,0.15)':'#F3F4F6' }]} testID="eventReminderBtn">
+            <Text style={[styles.eventBtnText, isMine?styles.textMine:styles.textTheirs]}>Set reminder</Text>
           </TouchableOpacity>
           <Text style={[styles.time, isMine?styles.timeMine:styles.timeTheirs]}>{new Date(item.ts).toLocaleTimeString()}</Text>
         </View>
@@ -326,7 +389,7 @@ export default function ChatRoom() {
           </View>
         )}
 
-        {showAttach && (
+        {showAttach && !showPollForm && !showEventForm && (
           <View style={styles.attachSheet} testID="attachSheet">
             <View style={styles.attachGrid}>
               <TouchableOpacity style={styles.attachTile} onPress={pickImageFromLibrary} testID="attGallery">
@@ -353,15 +416,75 @@ export default function ChatRoom() {
                 <View style={[styles.tileIconWrap, { backgroundColor: '#FFF1E6' }]}><Headphones color="#F97316" size={22} /></View>
                 <Text style={styles.tileLabel}>Audio</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.attachTile} onPress={() => { Alert.alert('Poll', 'Create a poll (stub)'); setShowAttach(false); }} testID="attPoll">
+              <TouchableOpacity style={styles.attachTile} onPress={() => { setShowPollForm(true); }} testID="attPoll">
                 <View style={[styles.tileIconWrap, { backgroundColor: '#FFF8E6' }]}><BarChart3 color="#F59E0B" size={22} /></View>
                 <Text style={styles.tileLabel}>Poll</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.attachTile} onPress={() => { Alert.alert('Event', 'Create an event (stub)'); setShowAttach(false); }} testID="attEvent">
+              <TouchableOpacity style={styles.attachTile} onPress={() => { setShowEventForm(true); }} testID="attEvent">
                 <View style={[styles.tileIconWrap, { backgroundColor: '#FFEAF0' }]}><Calendar color="#EC4899" size={22} /></View>
                 <Text style={styles.tileLabel}>Event</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        )}
+
+        {showAttach && showPollForm && (
+          <View style={styles.attachSheet} testID="pollForm">
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>Create Poll</Text>
+              <TouchableOpacity onPress={() => { setShowPollForm(false); setShowAttach(false); }} style={styles.closeBtn}><X color="#111" size={16} /></TouchableOpacity>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <TextInput value={pollQ} onChangeText={setPollQ} placeholder="Question" placeholderTextColor="#9AA0A6" style={styles.input} />
+              {pollOptions.map((opt, idx) => (
+                <View key={String(idx)} style={styles.rowBetween}>
+                  <TextInput value={opt} onChangeText={(t)=>{
+                    const copy = [...pollOptions];
+                    copy[idx] = t;
+                    setPollOptions(copy);
+                  }} placeholder={`Option ${idx+1}`} placeholderTextColor="#9AA0A6" style={[styles.input, { flex: 1 }]} />
+                  {pollOptions.length>2 && (
+                    <TouchableOpacity onPress={() => { const copy=[...pollOptions]; copy.splice(idx,1); setPollOptions(copy); }} style={[styles.smallBtn, { backgroundColor: '#fee2e2' }]}><Text style={{ color: '#B91C1C' }}>Remove</Text></TouchableOpacity>
+                  )}
+                </View>
+              ))}
+              {pollOptions.length<6 && (
+                <TouchableOpacity onPress={() => setPollOptions([...pollOptions, ''])} style={styles.addRowBtn} testID="addPollOption">
+                  <Text style={styles.addRowText}>+ Add option</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity onPress={async ()=>{
+                const cleaned = pollOptions.map(o=>o.trim()).filter(Boolean);
+                if (!pollQ.trim() || cleaned.length<2) { Alert.alert('Incomplete', 'Enter a question and at least 2 options.'); return; }
+                await appendMessage({ id: Date.now().toString(), type: 'poll', question: pollQ.trim(), options: cleaned, results: Array.from({ length: cleaned.length }, ()=>0), ts: Date.now(), sender: 'you' });
+                setPollQ(''); setPollOptions(['','']); setShowPollForm(false); setShowAttach(false);
+              }} style={[styles.primaryBtn]} testID="createPollBtn">
+                <Text style={styles.primaryBtnText}>Create Poll</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        )}
+
+        {showAttach && showEventForm && (
+          <View style={styles.attachSheet} testID="eventForm">
+            <View style={styles.formHeader}>
+              <Text style={styles.formTitle}>Create Event</Text>
+              <TouchableOpacity onPress={() => { setShowEventForm(false); setShowAttach(false); }} style={styles.closeBtn}><X color="#111" size={16} /></TouchableOpacity>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <TextInput value={eventTitle} onChangeText={setEventTitle} placeholder="Title (e.g. Osusu vote)" placeholderTextColor="#9AA0A6" style={styles.input} />
+              <TextInput value={eventDateTime} onChangeText={setEventDateTime} placeholder="When (YYYY-MM-DD HH:MM)" placeholderTextColor="#9AA0A6" style={styles.input} />
+              <TextInput value={eventNote} onChangeText={setEventNote} placeholder="Notes (optional)" placeholderTextColor="#9AA0A6" style={[styles.input, { height: 80 }]} multiline />
+              <TouchableOpacity onPress={async ()=>{
+                if (!eventTitle.trim() || !eventDateTime.trim()) { Alert.alert('Incomplete', 'Enter title and date/time.'); return; }
+                const when = new Date(eventDateTime);
+                if (isNaN(when.getTime())) { Alert.alert('Invalid date', 'Use format YYYY-MM-DD HH:MM'); return; }
+                await appendMessage({ id: Date.now().toString(), type: 'event', title: eventTitle.trim(), when: when.toISOString(), note: eventNote.trim(), ts: Date.now(), sender: 'you' });
+                setEventTitle(''); setEventDateTime(''); setEventNote(''); setShowEventForm(false); setShowAttach(false);
+              }} style={[styles.primaryBtn]} testID="createEventBtn">
+                <Text style={styles.primaryBtnText}>Create Event</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         )}
 
@@ -414,6 +537,17 @@ const styles = StyleSheet.create({
   tileIconWrap: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   tileLabel: { marginTop: 8, color: '#6B7280', fontWeight: '600' },
 
+  formHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  formTitle: { fontWeight: '800', color: '#111' },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  input: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: '#111', marginBottom: 10 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  smallBtn: { paddingHorizontal: 10, paddingVertical: 10, borderRadius: 10 },
+  addRowBtn: { backgroundColor: '#F3F4F6', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 10 },
+  addRowText: { color: '#374151', fontWeight: '600' },
+  primaryBtn: { backgroundColor: '#111827', padding: 14, borderRadius: 14, alignItems: 'center' },
+  primaryBtnText: { color: '#fff', fontWeight: '700' },
+
   inputRow: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: 'transparent' },
   msgBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 8, height: 48 },
   msgBarIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
@@ -434,4 +568,12 @@ const styles = StyleSheet.create({
   pendingActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   discardBtn: { backgroundColor: '#9CA3AF', marginRight: 0 },
   confirmBtn: { backgroundColor: '#10B981', marginRight: 0 },
+
+  pollOption: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.05)', marginBottom: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pollOptionSelected: { borderWidth: 1, borderColor: '#10B981' },
+  pollLabel: { fontWeight: '600' },
+  pollCount: { opacity: 0.8 },
+
+  eventBtn: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, alignSelf: 'flex-start' },
+  eventBtnText: { fontWeight: '700' },
 });
