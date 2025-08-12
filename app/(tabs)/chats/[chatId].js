@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
-import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check, Smile, MapPin, User as UserIcon, FileText, Headphones, Calendar, BarChart3 } from 'lucide-react-native';
+import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check, Smile, FileText, Headphones, Calendar, BarChart3 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
@@ -27,7 +27,12 @@ export default function ChatRoom() {
   const [eventTitle, setEventTitle] = useState('');
   const [eventDateTime, setEventDateTime] = useState('');
   const [eventNote, setEventNote] = useState('');
+  const [showEmoji, setShowEmoji] = useState(false);
   const waveAnim = useMemo(() => Array.from({ length: 8 }, () => new Animated.Value(0)), []);
+
+  const emojiSet = useMemo(() => (
+    ['😀','😁','😂','🤣','😊','😍','😘','😎','😇','😉','🙌','👏','👍','🔥','💯','🎉','🥳','🙏','💪','🤝','❤️','💙','💛','😅','🤔','😴','😭','😤','😮','🤯']
+  ), []);
 
   useEffect(() => {
     (async () => {
@@ -66,6 +71,7 @@ export default function ChatRoom() {
     const msg = { id: Date.now().toString(), type: 'text', text: trimmed, ts: Date.now(), sender: 'you' };
     setInput('');
     await appendMessage(msg);
+    setShowEmoji(false);
   };
 
   const pickImageFromLibrary = async () => {
@@ -223,33 +229,6 @@ export default function ChatRoom() {
     } catch (e) { console.log('audio pick err', e); }
   };
 
-  const openLocation = async () => {
-    try {
-      if (Platform.OS === 'web') { Alert.alert('Not available', 'Location sending is not supported on web.'); return; }
-      const { status } = await (await import('expo-location')).requestForegroundPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission required', 'Allow location access.'); return; }
-      const { coords } = await (await import('expo-location')).getCurrentPositionAsync({});
-      const mapsUrl = Platform.select({ ios: `http://maps.apple.com/?ll=${coords.latitude},${coords.longitude}`, default: `geo:${coords.latitude},${coords.longitude}` });
-      await appendMessage({ id: Date.now().toString(), type: 'text', text: `Location: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}\n${mapsUrl}` , ts: Date.now(), sender: 'you' });
-      setShowAttach(false);
-    } catch (e) { console.log('loc err', e); }
-  };
-
-  const pickContact = async () => {
-    try {
-      if (Platform.OS === 'web') { Alert.alert('Not available', 'Contacts are not supported on web.'); return; }
-      const Contacts = await import('expo-contacts');
-      const { status } = await Contacts.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permission required', 'Allow contacts access.'); return; }
-      const { data } = await Contacts.getContactsAsync({ pageSize: 1 });
-      if (data?.[0]) {
-        const c = data[0];
-        await appendMessage({ id: Date.now().toString(), type: 'text', text: `Contact: ${c.name}${c.phoneNumbers?.[0]?.number? ' | '+c.phoneNumbers[0].number : ''}`, ts: Date.now(), sender: 'you' });
-      }
-      setShowAttach(false);
-    } catch (e) { console.log('contact err', e); }
-  };
-
   const onVote = async (msgId, idx) => {
     try {
       const next = messages.map(m => {
@@ -400,14 +379,6 @@ export default function ChatRoom() {
                 <View style={[styles.tileIconWrap, { backgroundColor: '#FFE4EF' }]}><CameraIcon color="#FF2D7A" size={22} /></View>
                 <Text style={styles.tileLabel}>Camera</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.attachTile} onPress={openLocation} testID="attLocation">
-                <View style={[styles.tileIconWrap, { backgroundColor: '#E6FFF4' }]}><MapPin color="#10B981" size={22} /></View>
-                <Text style={styles.tileLabel}>Location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachTile} onPress={pickContact} testID="attContact">
-                <View style={[styles.tileIconWrap, { backgroundColor: '#EAF2FF' }]}><UserIcon color="#2563EB" size={22} /></View>
-                <Text style={styles.tileLabel}>Contact</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.attachTile} onPress={pickDocument} testID="attDocument">
                 <View style={[styles.tileIconWrap, { backgroundColor: '#F1E9FF' }]}><FileText color="#7C3AED" size={22} /></View>
                 <Text style={styles.tileLabel}>Document</Text>
@@ -488,13 +459,25 @@ export default function ChatRoom() {
           </View>
         )}
 
+        {showEmoji && (
+          <View style={styles.emojiSheet} testID="emojiSheet">
+            <ScrollView contentContainerStyle={styles.emojiGrid}>
+              {emojiSet.map((em, idx) => (
+                <TouchableOpacity key={String(idx)} style={styles.emojiItem} onPress={() => { setInput((t)=> (t ?? '') + em); setShowEmoji(false); }} testID={`emoji-${idx}`}>
+                  <Text style={{ fontSize: 24 }}>{em}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={styles.inputRow}>
           <View style={styles.msgBar}>
-            <TouchableOpacity onPress={() => {}} style={styles.msgBarIcon} testID="emojiBtn">
+            <TouchableOpacity onPress={() => setShowEmoji((v)=>!v)} style={styles.msgBarIcon} testID="emojiBtn">
               <Smile color="#6B7280" size={20} />
             </TouchableOpacity>
             <TextInput style={styles.msgInput} value={input} onChangeText={setInput} placeholder="Message" placeholderTextColor="#9AA0A6" testID="msgInput" />
-            <TouchableOpacity onPress={() => setShowAttach((v)=>!v)} style={styles.msgBarIcon} testID="clipBtn">
+            <TouchableOpacity onPress={() => { setShowAttach((v)=>!v); setShowEmoji(false); }} style={styles.msgBarIcon} testID="clipBtn">
               <Paperclip color="#6B7280" size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={captureWithCamera} style={[styles.msgBarIcon, { marginRight: 6 }]} testID="cameraBtn">
@@ -576,4 +559,8 @@ const styles = StyleSheet.create({
 
   eventBtn: { marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, alignSelf: 'flex-start' },
   eventBtnText: { fontWeight: '700' },
+
+  emojiSheet: { backgroundColor: '#fff', marginHorizontal: 10, marginBottom: 8, borderRadius: 16, paddingVertical: 8, borderWidth: 1, borderColor: '#eee', maxHeight: 220 },
+  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
+  emojiItem: { width: '12.5%', paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
 });
