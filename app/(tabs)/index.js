@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Users, User, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins, GraduationCap, Bell } from 'lucide-react-native';
@@ -55,6 +55,19 @@ function SectionHeader({ title, Icon, gradient, testID }) {
   );
 }
 
+function NotificationItem({ item, onPress }) {
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.notifItem} testID={`notif-${item.id}`}>
+      <View style={[styles.notifDot, { opacity: item.read ? 0 : 1 }]} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.notifTitle}>{item.title || 'Notification'}</Text>
+        {!!item.body && <Text style={styles.notifBody}>{item.body}</Text>}
+        {!!item.time && <Text style={styles.notifTime}>{item.time}</Text>}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function HomeScreen() {
   const [user, setUser] = useState({ name: '', phone: '' });
   const [mm, setMm] = useState(null);
@@ -63,6 +76,9 @@ export default function HomeScreen() {
   const [walletTx, setWalletTx] = useState([]);
   const [groupsPreview, setGroupsPreview] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     (async () => {
@@ -90,7 +106,9 @@ export default function HomeScreen() {
         if (notifsRaw) {
           try {
             const ns = JSON.parse(notifsRaw);
-            const count = Array.isArray(ns) ? ns.filter(n => !n.read).length : 0;
+            const list = Array.isArray(ns) ? ns : [];
+            setNotifications(list);
+            const count = list.filter(n => !n.read).length;
             setUnreadCount(count);
           } catch {}
         }
@@ -102,6 +120,49 @@ export default function HomeScreen() {
   }, []);
 
   const userId = useMemo(() => (user.phone || 'guest'), [user]);
+
+  const openNotifications = useCallback(() => {
+    try {
+      setNotifOpen(true);
+      Animated.timing(notifAnim, { toValue: 1, duration: 220, useNativeDriver: true }).start();
+    } catch (e) {
+      console.log('[Home] openNotifications error', e);
+    }
+  }, [notifAnim]);
+
+  const closeNotifications = useCallback(() => {
+    try {
+      Animated.timing(notifAnim, { toValue: 0, duration: 180, useNativeDriver: true }).start(({ finished }) => {
+        if (finished) setNotifOpen(false);
+      });
+    } catch (e) {
+      setNotifOpen(false);
+      console.log('[Home] closeNotifications error', e);
+    }
+  }, [notifAnim]);
+
+  const markAllRead = useCallback(async () => {
+    try {
+      const updated = (notifications || []).map(n => ({ ...n, read: true }));
+      setNotifications(updated);
+      setUnreadCount(0);
+      await AsyncStorage.setItem('notifications', JSON.stringify(updated));
+    } catch (e) {
+      Alert.alert('Error', 'Failed to update notifications');
+    }
+  }, [notifications]);
+
+  const onOpenItem = useCallback(async (id) => {
+    try {
+      const updated = (notifications || []).map(n => (n.id === id ? { ...n, read: true } : n));
+      setNotifications(updated);
+      const count = updated.filter(n => !n.read).length;
+      setUnreadCount(count);
+      await AsyncStorage.setItem('notifications', JSON.stringify(updated));
+    } catch (e) {
+      Alert.alert('Error', 'Failed to open notification');
+    }
+  }, [notifications]);
 
   const walletBalance = useMemo(() => {
     try {
@@ -144,13 +205,7 @@ export default function HomeScreen() {
         <View style={styles.topBar}>
           <Text style={styles.bigTitle}>Home</Text>
           <PressableScale
-            onPress={() => {
-              try {
-                router.push('/(tabs)/chats');
-              } catch (e) {
-                Alert.alert('Notifications', 'Notifications screen coming soon');
-              }
-            }}
+            onPress={openNotifications}
             testID="btnNotifications"
             style={styles.bellWrap}
           >
@@ -253,6 +308,49 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
       </ScrollView>
+
+      {notifOpen && (
+        <View style={styles.notifOverlay} testID="notifOverlay">
+          <Pressable style={styles.notifBackdrop} onPress={closeNotifications} testID="notifBackdrop" />
+          <Animated.View
+            style={[
+              styles.notifSheet,
+              {
+                transform: [
+                  {
+                    translateY: notifAnim.interpolate({ inputRange: [0, 1], outputRange: [400, 0] }),
+                  },
+                ],
+                opacity: notifAnim,
+              },
+            ]}
+          >
+            <View style={styles.notifHeader}>
+              <Text style={styles.notifHeaderTitle}>Notifications</Text>
+              <View style={styles.notifHeaderActions}>
+                <TouchableOpacity onPress={markAllRead} testID="markAllRead">
+                  <Text style={styles.notifActionText}>Mark all read</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={closeNotifications} testID="closeNotif">
+                  <Text style={styles.notifActionText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}>
+              {notifications.length === 0 ? (
+                <View style={styles.notifEmpty}>
+                  <Text style={styles.notifEmptyTitle}>You're all caught up</Text>
+                  <Text style={styles.notifEmptySub}>No notifications yet</Text>
+                </View>
+              ) : (
+                notifications.map((n) => (
+                  <NotificationItem key={n.id} item={n} onPress={() => onOpenItem(n.id)} />
+                ))
+              )}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -299,4 +397,20 @@ const styles = StyleSheet.create({
   bellBg: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6ECFF' },
   badge: { position: 'absolute', right: -2, top: -2, backgroundColor: '#ef4444', borderRadius: 8, paddingHorizontal: 4, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
+  notifOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'flex-end' },
+  notifBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
+  notifSheet: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '70%', paddingBottom: 12 },
+  notifHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
+  notifHeaderTitle: { fontSize: 16, fontWeight: '800', color: palette.text },
+  notifHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  notifActionText: { color: palette.primary, fontWeight: '700' },
+  notifItem: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#eef2ff' },
+  notifDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444', marginTop: 6, marginRight: 10 },
+  notifTitle: { fontWeight: '800', color: palette.text },
+  notifBody: { color: '#475569', marginTop: 2 },
+  notifTime: { color: '#94a3b8', fontSize: 12, marginTop: 6 },
+  notifEmpty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  notifEmptyTitle: { fontWeight: '800', color: palette.text },
+  notifEmptySub: { color: '#6b7280', marginTop: 6 },
 });
