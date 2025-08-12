@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, Eye } from 'lucide-react-native';
+import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const palette = {
@@ -31,17 +31,11 @@ function PressableScale({ onPress, children, style, testID }) {
   );
 }
 
-function FeatureTile({ label, Icon, colors, pill }) {
+function FeatureTile({ label, Icon, colors }) {
   return (
     <PressableScale onPress={colors.onPress} testID={colors.testID} style={styles.featureWrap}>
-      <View style={styles.featureCardRect}>
-        {!!pill && (
-          <View style={[styles.pill, { backgroundColor: pill.bg || '#0B5FFF' }]}
-            testID={`${colors.testID}-pill`}>
-            <Text style={styles.pillText}>{pill.text}</Text>
-          </View>
-        )}
-        <LinearGradient colors={colors.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconRow}>
+      <View style={styles.featureInnerSquare}>
+        <LinearGradient colors={colors.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconBgSquare}>
           <Icon color={colors.icon} size={24} />
         </LinearGradient>
         <Text style={styles.tileText}>{label}</Text>
@@ -124,22 +118,11 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.screenTitle}>My Savings</Text>
-        <LinearGradient colors={[palette.primary, '#0B50E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCardNew}>
-          <View style={styles.summaryInner}>
-            <View style={styles.summaryTopRow}>
-              <View style={styles.quickSavePill} testID="quickSavePill">
-                <Text style={styles.quickSaveText}>+ Quick Save</Text>
-              </View>
-              <View style={styles.returnPill} testID="returnsPill">
-                <Text style={styles.returnPillText}>Up to 22% returns</Text>
-              </View>
-            </View>
-            <Text style={styles.balanceLabelLight}>Total Savings</Text>
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceValueLight}>{currency(totalAll).replace('NLe','₦')}</Text>
-              <Eye color="#DCE7FF" size={20} />
-            </View>
+        <Text style={styles.bigTitle}>Home</Text>
+        <LinearGradient colors={[palette.primary, '#102B73']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCardNew}>
+          <View style={{ padding: 16 }}>
+            <Text style={styles.balanceLabelLight}>Balance</Text>
+            <Text style={styles.balanceValueLight}>{currency(totalAll)}</Text>
             <View style={styles.activityRow}>
               <Text style={styles.activityLight}>Recent Activity</Text>
               <View style={styles.receivedBadge} testID="receivedBadge">
@@ -150,34 +133,30 @@ export default function HomeScreen() {
         </LinearGradient>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Strict Savings Plans</Text>
+          <Text style={styles.sectionHeader}>Quick Links</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
-            {grid.map((g, i) => (
-              <FeatureTile
-                key={g.key}
-                label={i === 0 ? 'PiggyBank' : i === 1 ? 'SafeLock' : 'Target Savings'}
-                Icon={g.icon}
-                colors={{ icon: i === 1 ? '#0A1B3E' : '#ffffff', bg: g.bg, onPress: g.onPress, testID: g.testID }}
-                pill={{ text: i === 0 ? 'SETUP' : i === 1 ? 'LOCK MONEY' : 'NEW GOAL', bg: i === 2 ? '#22C55E' : palette.primary }}
-              />
+            {grid.map((g) => (
+              <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.testID }} />
             ))}
           </ScrollView>
+          {!!mm && <Text style={styles.gridCaption}>Orange Money Linked</Text>}
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Flexible Savings Plans</Text>
+          <Text style={styles.sectionHeader}>Payments</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
-              { key: 'flex-naira', label: 'Flex Naira', icon: WalletIcon, color: '#0A1B3E', bg: ['#FFE1EF', '#FBD0E6'], pill: { text: 'ADD MONEY', bg: '#FF7A00' } },
-              { key: 'flex-dollar', label: 'Flex Dollar', icon: CreditCard, color: '#0A1B3E', bg: ['#F0F3F9', '#E7EBF6'], pill: { text: 'GET USD', bg: '#0B1F4B' } },
+              { key: 'pay-mm', label: 'Mobile Money', icon: WalletIcon, color: '#ffffff', bg: [palette.primary, '#1449CC'], onPress: () => router.push('/(tabs)/make-payment') },
+              { key: 'pay-bank', label: 'Send via Bank', icon: Building2, color: '#0A1B3E', bg: ['#E0ECFF', '#CFE0FF'], onPress: () => router.push('/(tabs)/make-payment') },
+              { key: 'pay-receive', label: 'Receive', icon: CreditCard, color: '#0A1B3E', bg: ['#FFE2CC', '#FFD0AD'], onPress: () => router.push('/(tabs)/wallet') },
             ].map((g) => (
-              <FeatureTile key={g.key} label={g.label} Icon={g.icon} pill={g.pill} colors={{ icon: g.color, bg: g.bg, onPress: () => {}, testID: g.key }} />
+              <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.key }} />
             ))}
           </ScrollView>
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Your Goals</Text>
+          <Text style={styles.sectionHeader}>Savings Goals</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
             {[{ key:'rent', title:'House Rent', sub:`${currency(2500)} / ${currency(10000)}`, bg:['#c6e0da','#86b3aa'], icon: Home }, { key:'school', title:'School Fees', sub:`${currency(1200)} / ${currency(5000)}`, bg:['#c5dee6','#7aa3b5'], icon: FileText }].map(card => (
               <PressableScale key={card.key} onPress={() => router.push('/(tabs)/savings')} testID={`goal-${card.key}`} style={{ paddingRight: 12 }}>
@@ -227,32 +206,25 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.bg },
   scroll: { flex: 1 },
 
-  screenTitle: { fontSize: 18, fontWeight: '800', color: palette.text, marginTop: 8, marginHorizontal: 16, marginBottom: 8, textAlign: 'center' },
+  bigTitle: { fontSize: 22, fontWeight: '800', color: palette.text, marginTop: 16, marginHorizontal: 16, marginBottom: 8 },
 
   summaryCardNew: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
-  summaryInner: { padding: 16 },
-  summaryTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  quickSavePill: { backgroundColor: '#FFDC9C', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  quickSaveText: { color: '#0B1F4B', fontWeight: '800' },
-  returnPill: { backgroundColor: '#0B1F4B', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
-  returnPillText: { color: '#fff', fontWeight: '800' },
-  balanceLabelLight: { color: '#DCE7FF', marginTop: 12 },
-  balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-  balanceValueLight: { color: '#FFFFFF', fontSize: 28, fontWeight: '800' },
+  balanceLabelLight: { color: '#DCE7FF' },
+  balanceValueLight: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginTop: 6 },
   activityRow: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   activityLight: { color: '#E6EEFF', fontWeight: '600' },
   receivedBadge: { backgroundColor: palette.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   receivedBadgeText: { color: '#FFFFFF', fontWeight: '800' },
 
   sectionBlock: { marginTop: 18 },
-  sectionHeader: { fontSize: 16, fontWeight: '800', color: '#6B7280', marginHorizontal: 16, marginBottom: 10 },
+  sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text, marginHorizontal: 16, marginBottom: 10 },
 
-  featureWrap: { width: 180, padding: 8 },
-  featureCardRect: { backgroundColor: '#fff', borderRadius: 18, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 3, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
-  iconRow: { width: '100%', height: 88, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  pill: { position: 'absolute', right: 16, top: 12, zIndex: 2, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14 },
-  pillText: { color: '#fff', fontWeight: '800', fontSize: 12 },
-  tileText: { marginTop: 10, fontWeight: '800', color: palette.text, fontSize: 13, textAlign: 'left' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
+  featureWrap: { width: 168, padding: 8 },
+  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
+  iconBgSquare: { width: 100, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tileText: { marginTop: 10, fontWeight: '800', color: palette.text, fontSize: 13, textAlign: 'center' },
+  gridCaption: { color: '#6b7280', marginLeft: 16, marginTop: -4 },
 
   goalCard: { width: 160, height: 120, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6ECFF' },
   goalTitle: { marginTop: 10, marginLeft: 6, color: palette.text, fontWeight: '800' },
