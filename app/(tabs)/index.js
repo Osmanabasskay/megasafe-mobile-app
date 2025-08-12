@@ -144,7 +144,7 @@ export default function HomeScreen() {
 
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionHeader}>Payments</Text>
-          <View style={styles.grid}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
               { key: 'pay-mm', label: 'Mobile Money', icon: WalletIcon, color: '#ffffff', bg: [palette.primary, '#1449CC'], onPress: () => router.push('/(tabs)/make-payment') },
               { key: 'pay-bank', label: 'Send via Bank', icon: Building2, color: '#0A1B3E', bg: ['#E0ECFF', '#CFE0FF'], onPress: () => router.push('/(tabs)/make-payment') },
@@ -152,7 +152,7 @@ export default function HomeScreen() {
             ].map((g) => (
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.key }} />
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         <View style={styles.sectionBlock}>
@@ -172,7 +172,7 @@ export default function HomeScreen() {
 
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionHeader}>Loans</Text>
-          <View style={styles.grid}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
               { key: 'loan-ind', label: 'Individual Loans', icon: FileText, color:'#0b3b2e', bg:['#b8d9d2','#91c3ba'], onPress: ()=>router.push('/(tabs)/loans') },
               { key: 'loan-group', label: 'Group Loans', icon: Users, color:'#093a3e', bg:['#b7d6d2','#8fbfb9'], onPress: ()=>router.push('/(tabs)/loans') },
@@ -180,7 +180,7 @@ export default function HomeScreen() {
             ].map((g)=>(
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon:g.color, bg:g.bg, onPress:g.onPress, testID:g.key }} />
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         <View style={styles.sectionBlock}>
@@ -220,18 +220,18 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text, marginHorizontal: 16, marginBottom: 10 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
-  featureWrap: { width: 140, padding: 8 },
-  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, padding: 12 },
-  iconBgSquare: { width: 80, height: 80, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  tileText: { marginTop: 8, fontWeight: '700', color: palette.text, fontSize: 12, textAlign: 'center' },
+  featureWrap: { width: 168, padding: 8 },
+  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
+  iconBgSquare: { width: 100, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tileText: { marginTop: 10, fontWeight: '800', color: palette.text, fontSize: 13, textAlign: 'center' },
   gridCaption: { color: '#6b7280', marginLeft: 16, marginTop: -4 },
 
-  goalCard: { width: 148, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  goalTitle: { marginTop: 8, marginLeft: 4, color: palette.text, fontWeight: '700' },
-  goalSub: { marginLeft: 4, color: '#6b7280', fontSize: 12 },
+  goalCard: { width: 160, height: 120, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6ECFF' },
+  goalTitle: { marginTop: 10, marginLeft: 6, color: palette.text, fontWeight: '800' },
+  goalSub: { marginLeft: 6, color: '#6b7280', fontSize: 12 },
 
-  groupCardMini: { width: 148, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  groupLogoText: { fontSize: 22, fontWeight: '800', color: '#243b2f' },
+  groupCardMini: { width: 160, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  groupLogoText: { fontSize: 24, fontWeight: '800', color: '#243b2f' },
   groupNameMini: { marginTop: 8, marginLeft: 4, color: palette.text, fontWeight: '700' },
   groupSubMini: { marginLeft: 4, color: '#6b7280', fontSize: 12 },
 });
