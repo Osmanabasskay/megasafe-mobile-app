@@ -1059,8 +1059,25 @@ export default function LoansScreen() {
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Address</Text><View style={styles.inputBox}><TextInput value={accountForm.branchAddress} onChangeText={(t)=>setAccountForm({...accountForm, branchAddress:t})} placeholder="Branch Address" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager Name</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerName} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerName:t})} placeholder="Manager Name" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerNin} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerNin:t})} placeholder="NIN" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Certificate 1 URL</Text><View style={styles.inputBox}><TextInput value={accountForm.certificate1Url} onChangeText={(t)=>setAccountForm({...accountForm, certificate1Url:t})} placeholder="https://..." style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Certificate 2 URL</Text><View style={styles.inputBox}><TextInput value={accountForm.certificate2Url} onChangeText={(t)=>setAccountForm({...accountForm, certificate2Url:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Business Registration Certificates (Photos)</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('certificate1Url')} testID="pickCert1">
+                    <Text style={styles.secondaryBtnText}>{accountForm.certificate1Url ? 'Replace Cert 1' : 'Pick Cert 1'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('certificate2Url')} testID="pickCert2">
+                    <Text style={styles.secondaryBtnText}>{accountForm.certificate2Url ? 'Replace Cert 2' : 'Pick Cert 2'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.certificate1Url ? <Image source={{ uri: accountForm.certificate1Url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Certificate 1 preview</Text>}
+                  </View>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.certificate2Url ? <Image source={{ uri: accountForm.certificate2Url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Certificate 2 preview</Text>}
+                  </View>
+                </View>
+              </View>
               <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
             </>
           )}
