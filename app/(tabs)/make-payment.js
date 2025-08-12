@@ -15,6 +15,11 @@ export default function MakePaymentScreen() {
   const [accountNumber, setAccountNumber] = useState('');
   const [note, setNote] = useState('');
   const [user, setUser] = useState({ id: 'guest', name: 'You', phone: '' });
+  const [otherPhone, setOtherPhone] = useState('');
+  const [recipientBank, setRecipientBank] = useState('');
+  const [recipientAccountName, setRecipientAccountName] = useState('');
+  const [recipientAccountHolder, setRecipientAccountHolder] = useState('');
+  const [showBanks, setShowBanks] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -38,8 +43,19 @@ export default function MakePaymentScreen() {
   const handleSubmit = async () => {
     const amt = parseFloat(amount);
     if (isNaN(amt) || amt <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
-    if (method === 'mm' && !mm?.number) { Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method'); return; }
-    if (method === 'bank' && !selectedBankId) { Alert.alert('Select Bank', 'Choose a linked bank'); return; }
+
+    if (forSelf) {
+      if (method === 'mm' && !mm?.number) { Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method'); return; }
+      if (method === 'bank' && !selectedBankId && !accountNumber) { Alert.alert('Bank', 'Select a linked bank or enter an account number'); return; }
+    } else {
+      if (method === 'mm' && !otherPhone) { Alert.alert('Phone required', 'Enter recipient mobile money number'); return; }
+      if (method === 'bank') {
+        if (!recipientBank) { Alert.alert('Choose bank', 'Select the recipient bank'); return; }
+        if (!recipientAccountName) { Alert.alert('Account name', 'Enter the account name'); return; }
+        if (!recipientAccountHolder) { Alert.alert('Account holder', 'Enter the account holder'); return; }
+        if (!accountNumber) { Alert.alert('Account number', 'Enter the account number'); return; }
+      }
+    }
 
     try {
       const paymentsRaw = await AsyncStorage.getItem('payments');
@@ -51,14 +67,32 @@ export default function MakePaymentScreen() {
         label = `Group Payment - ${g ? g.name : selectedGroupId}`;
         groupId = selectedGroupId;
       } else if (forSelf) {
-        label = `Self Bank Deposit`;
+        label = method === 'mm' ? 'Self Mobile Money' : method === 'bank' ? 'Self Bank Deposit' : 'Self Physical Payment';
       } else {
-        label = `Other Bank Transfer`;
+        label = method === 'mm' ? 'Other Mobile Money' : method === 'bank' ? 'Other Bank Transfer' : 'Other Physical Payment';
       }
-      const entry = { id: Date.now().toString(), amount: amt, note: label + (note ? ` • ${note}` : ''), date: new Date().toISOString(), groupId, payerId: user.id, method, number: method === 'mm' ? (mm?.number||'') : (banks.find(b=>b.id===selectedBankId)?.number || accountNumber || '') };
+
+      const entry = {
+        id: Date.now().toString(),
+        amount: amt,
+        note: label + (note ? ` • ${note}` : ''),
+        date: new Date().toISOString(),
+        groupId,
+        payerId: user.id,
+        method,
+        number: method === 'mm'
+          ? (forSelf ? (mm?.number || '') : otherPhone)
+          : (forSelf ? (banks.find(b => b.id === selectedBankId)?.number || accountNumber || '') : accountNumber),
+        recipient: !forSelf ? {
+          phone: method === 'mm' ? otherPhone : '',
+          bank: method === 'bank' ? recipientBank : '',
+          accountName: method === 'bank' ? recipientAccountName : '',
+          accountHolder: method === 'bank' ? recipientAccountHolder : '',
+        } : undefined,
+      };
       await AsyncStorage.setItem('payments', JSON.stringify([...list, entry]));
       Alert.alert('Success', 'Payment saved');
-      setAmount(''); setAccountNumber(''); setNote('');
+      setAmount(''); setAccountNumber(''); setNote(''); setOtherPhone(''); setRecipientBank(''); setRecipientAccountName(''); setRecipientAccountHolder('');
     } catch (e) { console.log('[MakePayment] save', e); Alert.alert('Error', 'Failed to save'); }
   };
 
@@ -85,7 +119,7 @@ export default function MakePaymentScreen() {
             ))
           )}
 
-          <Text style={[styles.label, { marginTop: 10 }]}>Bank Transfer</Text>
+          <Text style={[styles.label, { marginTop: 10 }]}>Who is this for?</Text>
           <View style={styles.row}>
             <TouchableOpacity style={[styles.pill, forSelf && styles.pillActive]} onPress={() => setForSelf(true)} testID="forSelfBtn"><Text style={[styles.pillText, forSelf && styles.pillTextActive]}>For self</Text></TouchableOpacity>
             <TouchableOpacity style={[styles.pill, !forSelf && styles.pillActive]} onPress={() => setForSelf(false)} testID="forOthersBtn"><Text style={[styles.pillText, !forSelf && styles.pillTextActive]}>For others</Text></TouchableOpacity>
@@ -99,30 +133,66 @@ export default function MakePaymentScreen() {
           </View>
 
           {method === 'mm' ? (
-            mm ? (
-              <View style={styles.infoCard}><Text style={styles.muted}>Paying with {mm.provider} ({(mm.number||'').slice(0,4)}****{(mm.number||'').slice(-2)})</Text></View>
+            forSelf ? (
+              mm ? (
+                <View style={styles.infoCard}><Text style={styles.muted}>Paying with {mm.provider} ({(mm.number||'').slice(0,4)}****{(mm.number||'').slice(-2)})</Text></View>
+              ) : (
+                <TouchableOpacity style={styles.secondaryBtn} onPress={() => Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method')} testID="setupMMFromPay"><Text style={styles.secondaryBtnText}>Add Mobile Money</Text></TouchableOpacity>
+              )
             ) : (
-              <TouchableOpacity style={styles.secondaryBtn} onPress={() => Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method')} testID="setupMMFromPay"><Text style={styles.secondaryBtnText}>Add Mobile Money</Text></TouchableOpacity>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Recipient Mobile Money Number</Text>
+                <View style={styles.inputBox}><TextInput testID="otherPhoneInput" style={styles.input} value={otherPhone} onChangeText={setOtherPhone} placeholder="e.g. 07XXXXXXXX" keyboardType="phone-pad" /></View>
+              </View>
             )
           ) : null}
 
           {method === 'bank' ? (
-            banks && banks.length > 0 ? (
-              banks.map((b) => (
-                <TouchableOpacity key={b.id} style={[styles.selector, selectedBankId === b.id && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={() => setSelectedBankId(selectedBankId === b.id ? '' : b.id)} testID={`pickBank-${b.id}`}>
-                  <Text style={styles.selectorText}>{b.bank} • {maskAcct(b.number)}</Text>
-                  {selectedBankId === b.id ? <Text style={styles.selectorArrow}>✓</Text> : <Text style={styles.selectorArrow}>▼</Text>}
-                </TouchableOpacity>
-              ))
+            forSelf ? (
+              banks && banks.length > 0 ? (
+                banks.map((b) => (
+                  <TouchableOpacity key={b.id} style={[styles.selector, selectedBankId === b.id && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={() => setSelectedBankId(selectedBankId === b.id ? '' : b.id)} testID={`pickBank-${b.id}`}>
+                    <Text style={styles.selectorText}>{b.bank} • {maskAcct(b.number)}</Text>
+                    {selectedBankId === b.id ? <Text style={styles.selectorArrow}>✓</Text> : <Text style={styles.selectorArrow}>▼</Text>}
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.infoCard}><Text style={styles.muted}>No linked banks. Link in Profile.</Text></View>
+              )
             ) : (
-              <View style={styles.infoCard}><Text style={styles.muted}>No linked banks. Link in Profile.</Text></View>
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Recipient Bank</Text>
+                  <TouchableOpacity style={styles.selector} onPress={() => setShowBanks((v)=>!v)} testID="openBankDropdown">
+                    <Text style={styles.selectorText}>{recipientBank || 'Choose bank'}</Text>
+                    <Text style={styles.selectorArrow}>▼</Text>
+                  </TouchableOpacity>
+                </View>
+                {showBanks ? (
+                  BANK_OPTIONS.map((name) => (
+                    <TouchableOpacity key={name} style={styles.selector} onPress={() => { setRecipientBank(name); setShowBanks(false); }} testID={`bankOption-${name}`}>
+                      <Text style={styles.selectorText}>{name}</Text>
+                      {recipientBank === name ? <Text style={styles.selectorArrow}>✓</Text> : <Text style={styles.selectorArrow}>▼</Text>}
+                    </TouchableOpacity>
+                  ))
+                ) : null}
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Account Name</Text>
+                  <View style={styles.inputBox}><TextInput testID="recipientAccountName" style={styles.input} value={recipientAccountName} onChangeText={setRecipientAccountName} placeholder="e.g. John S Doe" /></View>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Account Holder</Text>
+                  <View style={styles.inputBox}><TextInput testID="recipientAccountHolder" style={styles.input} value={recipientAccountHolder} onChangeText={setRecipientAccountHolder} placeholder="e.g. John Doe" /></View>
+                </View>
+              </>
             )
           ) : null}
 
-          {method === 'bank' && !selectedBankId ? (
+          {(method === 'bank' && ((forSelf && !selectedBankId) || !forSelf)) ? (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Other Bank Account Number</Text>
-              <View style={styles.inputBox}><TextInput style={styles.input} value={accountNumber} onChangeText={setAccountNumber} placeholder="Enter account number" /></View>
+              <Text style={styles.inputLabel}>{forSelf ? 'Other Bank Account Number' : 'Recipient Account Number'}</Text>
+              <View style={styles.inputBox}><TextInput testID="recipientAccountNumber" style={styles.input} value={accountNumber} onChangeText={setAccountNumber} placeholder="Enter account number" keyboardType="number-pad" /></View>
             </View>
           ) : null}
 
@@ -142,6 +212,17 @@ export default function MakePaymentScreen() {
     </SafeAreaView>
   );
 }
+
+const BANK_OPTIONS = [
+  'Zenith Bank',
+  'GTBank',
+  'United Bank for Africa',
+  'Ecobank',
+  'Standard Chartered',
+  'Rokel Commercial Bank',
+  'Sierra Leone Commercial Bank',
+  'Access Bank',
+];
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa' },
