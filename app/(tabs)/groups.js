@@ -84,6 +84,7 @@ export default function GroupsScreen() {
   const [assignCollectorId, setAssignCollectorId] = useState('');
   const [assignIdImage, setAssignIdImage] = useState('');
   const [assignMembersMap, setAssignMembersMap] = useState({});
+  const latestNotifIdRef = useRef(null);
 
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
@@ -572,6 +573,7 @@ export default function GroupsScreen() {
   const openDetails = (group) => {
     const latest = availableGroups.find((g) => g.id === group.id) || group;
     setSelectedGroup(latest);
+    try { const last = (latest.notifications||[]).slice(-1)[0]; latestNotifIdRef.current = last ? last.id : null; } catch {}
     setPaymentAmount(String(latest.amount || ''));
     const activeId = getActiveRecipientId(latest);
     setPaymentForMemberId(activeId);
@@ -1144,6 +1146,19 @@ export default function GroupsScreen() {
     return { byRecipient, recent };
   }, [selectedGroup, availableGroups]);
 
+  useEffect(() => {
+    try {
+      if (!selectedGroup) return;
+      const g = availableGroups.find((x)=>x.id === selectedGroup.id) || selectedGroup;
+      const last = (g.notifications||[]).slice(-1)[0];
+      if (!last) return;
+      if (latestNotifIdRef.current !== last.id) {
+        latestNotifIdRef.current = last.id;
+        Alert.alert('Group Alert', last.message);
+      }
+    } catch (e) { console.log('group alert popup', e); }
+  }, [availableGroups, selectedGroup]);
+
   const timeSlots = [
     { label: '7am', h: 7 },
     { label: '2pm', h: 14 },
@@ -1367,8 +1382,8 @@ export default function GroupsScreen() {
                     })}
                     <Text style={[styles.detailText, { marginTop: 6 }]}>Tip: You can select up to 2 members.</Text>
                     {isAdmin ? (
-                      <TouchableOpacity style={[styles.createButton, { marginTop: 10 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtn">
-                        <Text style={styles.createButtonText}>Finalize Round</Text>
+                      <TouchableOpacity style={[styles.createButton, styles.detailButton, { marginTop: 10 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtn">
+                        <Text style={[styles.createButtonText, styles.detailButtonText]}>Finalize Round</Text>
                       </TouchableOpacity>
                     ) : null}
                   </>
@@ -1400,9 +1415,9 @@ export default function GroupsScreen() {
                 ) : null}
               </View>
               <Text style={[styles.detailText, { marginBottom: 8 }]}>Current Recipient: {activeRecipient?.name || 'N/A'}</Text>
-              <TouchableOpacity style={[styles.createButton, { flexDirection: 'row', gap: 8 }]} onPress={() => { setPaymentAmount(String(g.amount || '')); setPaymentForMemberId(activeRecipientId); const canManual = !!activeAssignment && activeAssignment.collectorId === currentUser.id; setPaymentProvider(canManual ? 'Manual Collection' : 'Orange Money'); setShowPaymentModal(true); }} testID="payContributionBtn">
-                <CreditCard color="#fff" size={18} />
-                <Text style={styles.createButtonText}>Pay Contribution</Text>
+              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flexDirection: 'row', gap: 8 }]} onPress={() => { setPaymentAmount(String(g.amount || '')); setPaymentForMemberId(activeRecipientId); const canManual = !!activeAssignment && activeAssignment.collectorId === currentUser.id; setPaymentProvider(canManual ? 'Manual Collection' : 'Orange Money'); setShowPaymentModal(true); }} testID="payContributionBtn">
+                <CreditCard color="#FFA500" size={18} />
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Pay Contribution</Text>
               </TouchableOpacity>
 
               <View style={{ marginTop: 12 }}>
@@ -1501,7 +1516,7 @@ export default function GroupsScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.createButton, { marginTop: 4 }]} 
+                style={[styles.createButton, styles.detailButton, { marginTop: 4 }]} 
                 onPress={async () => {
                   const amt = parseFloat(paymentAmount);
                   if (isNaN(amt) || amt <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
@@ -1535,7 +1550,7 @@ export default function GroupsScreen() {
                 }}
                 testID="confirmPaymentBtn"
               >
-                <Text style={styles.createButtonText}>Confirm Payment</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Confirm Payment</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1581,10 +1596,10 @@ export default function GroupsScreen() {
           <View style={[styles.groupCard, { marginTop: 12 }]}>
             <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Admin Tools</Text>
             <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-              <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={() => { setShowAddMemberModal(true); }} testID="openAddMember">
-                <Text style={styles.createButtonText}>Add Member Manually</Text>
+              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={() => { setShowAddMemberModal(true); }} testID="openAddMember">
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Add Member Manually</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={async () => {
+              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={async () => {
                 try {
                   const raw = await AsyncStorage.getItem('myContacts');
                   const list = raw ? JSON.parse(raw) : [];
@@ -1593,15 +1608,15 @@ export default function GroupsScreen() {
                   setShowContactPickerModal(true);
                 } catch (e) { console.log('open contacts', e); }
               }} testID="openContactPicker">
-                <Text style={styles.createButtonText}>Add From Contacts</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Add From Contacts</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.createButton, { flex: 1 }]} onPress={() => {
+              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={() => {
                 setAssignCollectorId(currentUser.id);
                 setAssignIdImage('');
                 setAssignMembersMap({});
                 setShowAssignCollectorModal(true);
               }} testID="openAssignCollector">
-                <Text style={styles.createButtonText}>{activeAssignment ? 'Reassign Collector' : 'Assign Collector'}</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>{activeAssignment ? 'Reassign Collector' : 'Assign Collector'}</Text>
               </TouchableOpacity>
               {activeAssignment ? (
                 <TouchableOpacity style={[styles.rejectBtn, { flex: 1 }]} onPress={async () => {
@@ -1682,7 +1697,7 @@ export default function GroupsScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={[styles.createButton, { marginTop: 12 }]} onPress={async () => {
+                <TouchableOpacity style={[styles.createButton, styles.detailButton, { marginTop: 12 }]} onPress={async () => {
                   try {
                     if (!assignCollectorId) { Alert.alert('Select', 'Choose a collector'); return; }
                     const picked = Object.keys(assignMembersMap).filter((k) => assignMembersMap[k]);
@@ -1704,7 +1719,7 @@ export default function GroupsScreen() {
                     Alert.alert('Error', 'Failed to assign collector');
                   }
                 }} testID="confirmAssignCollector">
-                  <Text style={styles.createButtonText}>Confirm Assignment</Text>
+                  <Text style={[styles.createButtonText, styles.detailButtonText]}>Confirm Assignment</Text>
                 </TouchableOpacity>
               </>
             ) : null}
@@ -1733,7 +1748,7 @@ export default function GroupsScreen() {
                 <TextInput value={newMemberPhone} onChangeText={setNewMemberPhone} style={styles.textInput} placeholder="e.g., +23288000000" maxLength={12} keyboardType="phone-pad" testID="newMemberPhone" />
               </View>
             </View>
-            <TouchableOpacity style={styles.createButton} onPress={async () => {
+            <TouchableOpacity style={[styles.createButton, styles.detailButton]} onPress={async () => {
               if (!newMemberName.trim()) { Alert.alert('Validation', 'Name is required'); return; }
               if (!newMemberPhone.trim() || newMemberPhone.trim().length !== 12) { Alert.alert('Validation', 'Phone must be 12 characters'); return; }
               try {
@@ -1752,7 +1767,7 @@ export default function GroupsScreen() {
                 Alert.alert('Added', 'Member added to group.');
               } catch (e) { console.log('add member error', e); Alert.alert('Error', 'Failed to add member'); }
             }} testID="confirmAddMember">
-              <Text style={styles.createButtonText}>Add Member</Text>
+              <Text style={[styles.createButtonText, styles.detailButtonText]}>Add Member</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1776,7 +1791,7 @@ export default function GroupsScreen() {
               <View style={[styles.inputContainer, { marginTop: 8 }] }>
                 <TextInput value={newContactPhone} onChangeText={setNewContactPhone} style={styles.textInput} placeholder="Phone (e.g., +23288000000)" maxLength={12} keyboardType="phone-pad" testID="contactPhone" />
               </View>
-              <TouchableOpacity style={[styles.createButton, { marginTop: 10 }]} onPress={async () => {
+              <TouchableOpacity style={[styles.createButton, styles.detailButton, { marginTop: 10 }]} onPress={async () => {
                 if (!newContactName.trim() || !newContactPhone.trim()) { Alert.alert('Validation', 'Enter name and phone'); return; }
                 if (newContactPhone.trim().length !== 12) { Alert.alert('Validation', 'Phone must be 12 characters'); return; }
                 try {
@@ -1790,7 +1805,7 @@ export default function GroupsScreen() {
                   }
                 } catch (e) { console.log('save contact', e); }
               }} testID="saveContact">
-                <Text style={styles.createButtonText}>Save Contact</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Save Contact</Text>
               </TouchableOpacity>
             </View>
 
@@ -1920,6 +1935,8 @@ const styles = StyleSheet.create({
   errorText: { color: '#e74c3c', fontSize: 12, marginTop: 5, marginLeft: 5 },
   createButton: { backgroundColor: '#FFA500', borderRadius: 28, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   createButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', fontFamily: 'Montserrat' },
+  detailButton: { backgroundColor: '#00157f', borderRadius: 12, height: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  detailButtonText: { color: '#FFA500', fontSize: 14, fontWeight: '700', fontFamily: 'Montserrat' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20, width: '90%', maxWidth: 420 },
