@@ -40,6 +40,8 @@ import CalendarPicker from '../../components/CalendarPicker';
 export default function LoansScreen() {
   const [view, setView] = useState('home');
   const [loading, setLoading] = useState(false);
+  const [requestErrors, setRequestErrors] = useState({ amount: false, purpose: false, guarantorNin: false, guarantorFront: false, guarantorBack: false, agree: false });
+  const [accountErrors, setAccountErrors] = useState({});
 
   const [userData, setUserData] = useState({ name: '', phone: '' });
   const [loans, setLoans] = useState([]);
@@ -221,8 +223,8 @@ export default function LoansScreen() {
         Alert.alert('Error', 'Failed to read image');
         return;
       }
-      if (side === 'front') setGuarantorIdFrontB64(b64);
-      else setGuarantorIdBackB64(b64);
+      if (side === 'front') { setGuarantorIdFrontB64(b64); setRequestErrors((e)=>({ ...e, guarantorFront: false })); }
+      else { setGuarantorIdBackB64(b64); setRequestErrors((e)=>({ ...e, guarantorBack: false })); }
     } catch (e) {
       console.log('[Loans] pickGuarantorImage error', e);
       Alert.alert('Error', 'Could not pick image');
@@ -257,16 +259,21 @@ export default function LoansScreen() {
   }, []);
 
   const requestLoan = useCallback(async () => {
-    if (!agreedTerms) { Alert.alert('Agreement Required', 'You must agree to the terms and conditions before submitting'); return; }
     const a = parseFloat(amount);
+    const errs = {
+      amount: isNaN(a) || a <= 0,
+      purpose: !purpose.trim(),
+      guarantorNin: !guarantorNin.trim(),
+      guarantorFront: !guarantorIdFrontB64,
+      guarantorBack: !guarantorIdBackB64,
+      agree: !agreedTerms,
+    };
+    setRequestErrors(errs);
+    if (Object.values(errs).some(Boolean)) { Alert.alert('Missing information', 'Please fill all required fields'); return; }
     console.log('[Loans] requestLoan pressed', { agreedTerms, trustScore, amount, purpose });
-    if (isNaN(a) || a <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
     if (a > maxLoan) { Alert.alert('Limit', `Amount exceeds your limit of ${formatCurrency(maxLoan)}`); return; }
-    if (!purpose.trim()) { Alert.alert('Required', 'Enter a purpose'); return; }
     const myAccount = loanAccounts.find((acc)=>acc.ownerId===userId && acc.type==='individual');
     if (!myAccount) { Alert.alert('Create Loan Account', 'Create an Individual Loan Account first (Loans → Loan Accounts)'); setView('accounts'); return; }
-    if (!guarantorNin.trim()) { Alert.alert('Required', 'Enter Guarantor NIN'); return; }
-    if (!guarantorIdFrontB64 || !guarantorIdBackB64) { Alert.alert('Required', 'Attach guarantor ID card photos (front and back)'); return; }
     if (!mobileMoney && (!linkedBanks || linkedBanks.length === 0)) { Alert.alert('Payment Method Needed', 'Add Mobile Money or Bank details in Profile before requesting.'); return; }
     try {
       setLoading(true);
@@ -290,6 +297,7 @@ export default function LoansScreen() {
       await saveLoans(next);
       await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a });
       setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdFrontB64(''); setGuarantorIdBackB64(''); setAgreedTerms(false);
+      setRequestErrors({ amount: false, purpose: false, guarantorNin: false, guarantorFront: false, guarantorBack: false, agree: false });
       setView('home');
       setTimeout(() => { try { Alert.alert('Requested', 'Loan request submitted. View it under My Loans.'); } catch {} }, 50);
     } catch (e) {
@@ -519,25 +527,28 @@ export default function LoansScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Amount (NLe)</Text>
-            <View style={styles.inputBox}>
-              <TextInput value={amount} onChangeText={(t)=>setAmount(t.replace(/[^0-9.]/g,''))} placeholder="0.00" keyboardType="numeric" style={styles.input} testID="amountInput" />
+            <View style={[styles.inputBox, requestErrors.amount && styles.inputBoxError]}>
+              <TextInput value={amount} onChangeText={(t)=>{ setAmount(t.replace(/[^0-9.]/g,'')); setRequestErrors((e)=>({ ...e, amount: false })); }} placeholder="0.00" keyboardType="numeric" style={styles.input} testID="amountInput" />
             </View>
+            {requestErrors.amount ? <Text style={styles.errorText}>Amount is required</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Purpose</Text>
-            <View style={styles.inputBox}>
-              <TextInput value={purpose} onChangeText={setPurpose} placeholder="What do you need this loan for?" style={[styles.input, { height: 80, textAlignVertical: 'top' }]} multiline numberOfLines={3} testID="purposeInput" />
+            <View style={[styles.inputBox, requestErrors.purpose && styles.inputBoxError]}>
+              <TextInput value={purpose} onChangeText={(t)=>{ setPurpose(t); setRequestErrors((e)=>({ ...e, purpose: false })); }} placeholder="What do you need this loan for?" style={[styles.input, { height: 80, textAlignVertical: 'top' }]} multiline numberOfLines={3} testID="purposeInput" />
             </View>
+            {requestErrors.purpose ? <Text style={styles.errorText}>Purpose is required</Text> : null}
           </View>
 
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Guarantor</Text>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Guarantor NIN</Text>
-              <View style={styles.inputBox}>
-                <TextInput value={guarantorNin} onChangeText={setGuarantorNin} placeholder="Enter guarantor NIN" style={styles.input} testID="guarantorNin" />
+              <View style={[styles.inputBox, requestErrors.guarantorNin && styles.inputBoxError]}>
+                <TextInput value={guarantorNin} onChangeText={(t)=>{ setGuarantorNin(t); setRequestErrors((e)=>({ ...e, guarantorNin: false })); }} placeholder="Enter guarantor NIN" style={styles.input} testID="guarantorNin" />
               </View>
+              {requestErrors.guarantorNin ? <Text style={styles.errorText}>Guarantor NIN is required</Text> : null}
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Attach ID Card Photos</Text>
@@ -550,24 +561,26 @@ export default function LoansScreen() {
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                <View style={[styles.inputBox, requestErrors.guarantorFront && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                   {guarantorIdFrontB64 ? <Image source={{ uri: guarantorIdFrontB64 }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
                 </View>
-                <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                <View style={[styles.inputBox, requestErrors.guarantorBack && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                   {guarantorIdBackB64 ? <Image source={{ uri: guarantorIdBackB64 }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
                 </View>
               </View>
+              {(requestErrors.guarantorFront || requestErrors.guarantorBack) ? <Text style={styles.errorText}>Guarantor ID front and back are required</Text> : null}
             </View>
           </View>
 
           <Terms />
 
-          <TouchableOpacity style={styles.checkboxRow} onPress={() => setAgreedTerms(!agreedTerms)} testID="agreeTerms">
-            <View style={[styles.checkboxBox, agreedTerms && { backgroundColor: '#FFA500', borderColor: '#FFA500' }]}>
+          <TouchableOpacity style={styles.checkboxRow} onPress={() => { setAgreedTerms(!agreedTerms); setRequestErrors((e)=>({ ...e, agree: false })); }} testID="agreeTerms">
+            <View style={[styles.checkboxBox, agreedTerms && { backgroundColor: '#FFA500', borderColor: '#FFA500' }, requestErrors.agree && styles.checkboxError]}>
               {agreedTerms ? <Check color="#fff" size={16} /> : null}
             </View>
             <Text style={styles.checkboxLabel}>I have read and agree to the Terms & Conditions</Text>
           </TouchableOpacity>
+          {requestErrors.agree ? <Text style={[styles.errorText, { marginHorizontal: 16, marginTop: -6 }]}>You must agree to continue</Text> : null}
 
           <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { marginHorizontal: 16 }]}>
           <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={!agreedTerms} testID="submitLoanRequest">
@@ -1021,10 +1034,10 @@ export default function LoansScreen() {
           ) : null}
           {accountType === 'individual' && (
             <>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Full name</Text><View style={styles.inputBox}><TextInput value={accountForm.fullName} onChangeText={(t)=>setAccountForm({...accountForm, fullName:t})} placeholder="Full name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.nin} onChangeText={(t)=>setAccountForm({...accountForm, nin:t})} placeholder="National ID Number" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address</Text><View style={styles.inputBox}><TextInput value={accountForm.address} onChangeText={(t)=>setAccountForm({...accountForm, address:t})} placeholder="Address" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone</Text><View style={styles.inputBox}><TextInput value={accountForm.phone} onChangeText={(t)=>setAccountForm({...accountForm, phone:t})} placeholder="Phone" style={styles.input} keyboardType="phone-pad" /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Full name</Text><View style={[styles.inputBox, accountErrors.fullName && styles.inputBoxError]}><TextInput value={accountForm.fullName} onChangeText={(t)=>{ setAccountForm({...accountForm, fullName:t}); setAccountErrors((e)=>({ ...e, fullName: false })); }} placeholder="Full name" style={styles.input} /></View>{accountErrors.fullName ? <Text style={styles.errorText}>Full name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>NIN</Text><View style={[styles.inputBox, accountErrors.nin && styles.inputBoxError]}><TextInput value={accountForm.nin} onChangeText={(t)=>{ setAccountForm({...accountForm, nin:t}); setAccountErrors((e)=>({ ...e, nin: false })); }} placeholder="National ID Number" style={styles.input} /></View>{accountErrors.nin ? <Text style={styles.errorText}>NIN is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address</Text><View style={[styles.inputBox, accountErrors.address && styles.inputBoxError]}><TextInput value={accountForm.address} onChangeText={(t)=>{ setAccountForm({...accountForm, address:t}); setAccountErrors((e)=>({ ...e, address: false })); }} placeholder="Address" style={styles.input} /></View>{accountErrors.address ? <Text style={styles.errorText}>Address is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone</Text><View style={[styles.inputBox, accountErrors.phone && styles.inputBoxError]}><TextInput value={accountForm.phone} onChangeText={(t)=>{ setAccountForm({...accountForm, phone:t}); setAccountErrors((e)=>({ ...e, phone: false })); }} placeholder="Phone" style={styles.input} keyboardType="phone-pad" /></View>{accountErrors.phone ? <Text style={styles.errorText}>Phone is required</Text> : null}</View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Email (optional)</Text><View style={styles.inputBox}><TextInput value={accountForm.email} onChangeText={(t)=>setAccountForm({...accountForm, email:t})} placeholder="Email" style={styles.input} keyboardType="email-address" /></View></View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>ID Card Photos</Text>
@@ -1037,13 +1050,14 @@ export default function LoansScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.idFrontUrl && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.idFrontUrl ? <Image source={{ uri: accountForm.idFrontUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
                   </View>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.idBackUrl && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.idBackUrl ? <Image source={{ uri: accountForm.idBackUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
                   </View>
                 </View>
+                {(accountErrors.idFrontUrl || accountErrors.idBackUrl) ? <Text style={styles.errorText}>Both ID photos are required</Text> : null}
               </View>
               <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
             </>
@@ -1051,10 +1065,10 @@ export default function LoansScreen() {
 
           {accountType === 'mfi' && (
             <>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Institution Name</Text><View style={styles.inputBox}><TextInput value={accountForm.institutionName} onChangeText={(t)=>setAccountForm({...accountForm, institutionName:t})} placeholder="Institution" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Head Office Address</Text><View style={styles.inputBox}><TextInput value={accountForm.headOfficeAddress} onChangeText={(t)=>setAccountForm({...accountForm, headOfficeAddress:t})} placeholder="Address" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO Name</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoName} onChangeText={(t)=>setAccountForm({...accountForm, ceoName:t})} placeholder="CEO Name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoNin} onChangeText={(t)=>setAccountForm({...accountForm, ceoNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Institution Name</Text><View style={[styles.inputBox, accountErrors.institutionName && styles.inputBoxError]}><TextInput value={accountForm.institutionName} onChangeText={(t)=>{ setAccountForm({...accountForm, institutionName:t}); setAccountErrors((e)=>({ ...e, institutionName: false })); }} placeholder="Institution" style={styles.input} /></View>{accountErrors.institutionName ? <Text style={styles.errorText}>Institution name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Head Office Address</Text><View style={[styles.inputBox, accountErrors.headOfficeAddress && styles.inputBoxError]}><TextInput value={accountForm.headOfficeAddress} onChangeText={(t)=>{ setAccountForm({...accountForm, headOfficeAddress:t}); setAccountErrors((e)=>({ ...e, headOfficeAddress: false })); }} placeholder="Address" style={styles.input} /></View>{accountErrors.headOfficeAddress ? <Text style={styles.errorText}>Head office address is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO Name</Text><View style={[styles.inputBox, accountErrors.ceoName && styles.inputBoxError]}><TextInput value={accountForm.ceoName} onChangeText={(t)=>{ setAccountForm({...accountForm, ceoName:t}); setAccountErrors((e)=>({ ...e, ceoName: false })); }} placeholder="CEO Name" style={styles.input} /></View>{accountErrors.ceoName ? <Text style={styles.errorText}>CEO name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO NIN</Text><View style={[styles.inputBox, accountErrors.ceoNin && styles.inputBoxError]}><TextInput value={accountForm.ceoNin} onChangeText={(t)=>{ setAccountForm({...accountForm, ceoNin:t}); setAccountErrors((e)=>({ ...e, ceoNin: false })); }} placeholder="NIN" style={styles.input} /></View>{accountErrors.ceoNin ? <Text style={styles.errorText}>CEO NIN is required</Text> : null}</View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>CEO ID Card Photos</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -1066,17 +1080,18 @@ export default function LoansScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.ceoIdFrontUrl && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.ceoIdFrontUrl ? <Image source={{ uri: accountForm.ceoIdFrontUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
                   </View>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.ceoIdBackUrl && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.ceoIdBackUrl ? <Image source={{ uri: accountForm.ceoIdBackUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
                   </View>
                 </View>
+                {(accountErrors.ceoIdFrontUrl || accountErrors.ceoIdBackUrl) ? <Text style={styles.errorText}>CEO ID photos are required</Text> : null}
               </View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Address</Text><View style={styles.inputBox}><TextInput value={accountForm.branchAddress} onChangeText={(t)=>setAccountForm({...accountForm, branchAddress:t})} placeholder="Branch Address" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager Name</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerName} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerName:t})} placeholder="Manager Name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerNin} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Address</Text><View style={[styles.inputBox, accountErrors.branchAddress && styles.inputBoxError]}><TextInput value={accountForm.branchAddress} onChangeText={(t)=>{ setAccountForm({...accountForm, branchAddress:t}); setAccountErrors((e)=>({ ...e, branchAddress: false })); }} placeholder="Branch Address" style={styles.input} /></View>{accountErrors.branchAddress ? <Text style={styles.errorText}>Branch address is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager Name</Text><View style={[styles.inputBox, accountErrors.branchManagerName && styles.inputBoxError]}><TextInput value={accountForm.branchManagerName} onChangeText={(t)=>{ setAccountForm({...accountForm, branchManagerName:t}); setAccountErrors((e)=>({ ...e, branchManagerName: false })); }} placeholder="Manager Name" style={styles.input} /></View>{accountErrors.branchManagerName ? <Text style={styles.errorText}>Manager name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager NIN</Text><View style={[styles.inputBox, accountErrors.branchManagerNin && styles.inputBoxError]}><TextInput value={accountForm.branchManagerNin} onChangeText={(t)=>{ setAccountForm({...accountForm, branchManagerNin:t}); setAccountErrors((e)=>({ ...e, branchManagerNin: false })); }} placeholder="NIN" style={styles.input} /></View>{accountErrors.branchManagerNin ? <Text style={styles.errorText}>Manager NIN is required</Text> : null}</View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Business Registration Certificates (Photos)</Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -1088,13 +1103,14 @@ export default function LoansScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.certificate1Url && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.certificate1Url ? <Image source={{ uri: accountForm.certificate1Url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Certificate 1 preview</Text>}
                   </View>
-                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  <View style={[styles.inputBox, accountErrors.certificate2Url && styles.inputBoxError, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
                     {accountForm.certificate2Url ? <Image source={{ uri: accountForm.certificate2Url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Certificate 2 preview</Text>}
                   </View>
                 </View>
+                {(accountErrors.certificate1Url || accountErrors.certificate2Url) ? <Text style={styles.errorText}>Both certificates are required</Text> : null}
               </View>
               <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
             </>
@@ -1102,14 +1118,14 @@ export default function LoansScreen() {
 
           {accountType === 'organization' && (
             <>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Kind</Text><View style={styles.inputBox}><TextInput value={accountForm.orgKind} onChangeText={(t)=>setAccountForm({...accountForm, orgKind:t})} placeholder="NGO/CBO/Social Club/Institution" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Name</Text><View style={styles.inputBox}><TextInput value={accountForm.orgName} onChangeText={(t)=>setAccountForm({...accountForm, orgName:t})} placeholder="Name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Office Address</Text><View style={styles.inputBox}><TextInput value={accountForm.officeAddress} onChangeText={(t)=>setAccountForm({...accountForm, officeAddress:t})} placeholder="Address" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader (CEO/President)</Text><View style={styles.inputBox}><TextInput value={accountForm.leaderName} onChangeText={(t)=>setAccountForm({...accountForm, leaderName:t})} placeholder="Name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.leaderNin} onChangeText={(t)=>setAccountForm({...accountForm, leaderNin:t})} placeholder="NIN" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Role</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorRole} onChangeText={(t)=>setAccountForm({...accountForm, creatorRole:t})} placeholder="CEO/President/Chairman/..." style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Name</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorName} onChangeText={(t)=>setAccountForm({...accountForm, creatorName:t})} placeholder="Your name" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorNin} onChangeText={(t)=>setAccountForm({...accountForm, creatorNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Kind</Text><View style={[styles.inputBox, accountErrors.orgKind && styles.inputBoxError]}><TextInput value={accountForm.orgKind} onChangeText={(t)=>{ setAccountForm({...accountForm, orgKind:t}); setAccountErrors((e)=>({ ...e, orgKind: false })); }} placeholder="NGO/CBO/Social Club/Institution" style={styles.input} /></View>{accountErrors.orgKind ? <Text style={styles.errorText}>Organization kind is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Name</Text><View style={[styles.inputBox, accountErrors.orgName && styles.inputBoxError]}><TextInput value={accountForm.orgName} onChangeText={(t)=>{ setAccountForm({...accountForm, orgName:t}); setAccountErrors((e)=>({ ...e, orgName: false })); }} placeholder="Name" style={styles.input} /></View>{accountErrors.orgName ? <Text style={styles.errorText}>Organization name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Office Address</Text><View style={[styles.inputBox, accountErrors.officeAddress && styles.inputBoxError]}><TextInput value={accountForm.officeAddress} onChangeText={(t)=>{ setAccountForm({...accountForm, officeAddress:t}); setAccountErrors((e)=>({ ...e, officeAddress: false })); }} placeholder="Address" style={styles.input} /></View>{accountErrors.officeAddress ? <Text style={styles.errorText}>Office address is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader (CEO/President)</Text><View style={[styles.inputBox, accountErrors.leaderName && styles.inputBoxError]}><TextInput value={accountForm.leaderName} onChangeText={(t)=>{ setAccountForm({...accountForm, leaderName:t}); setAccountErrors((e)=>({ ...e, leaderName: false })); }} placeholder="Name" style={styles.input} /></View>{accountErrors.leaderName ? <Text style={styles.errorText}>Leader name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader NIN</Text><View style={[styles.inputBox, accountErrors.leaderNin && styles.inputBoxError]}><TextInput value={accountForm.leaderNin} onChangeText={(t)=>{ setAccountForm({...accountForm, leaderNin:t}); setAccountErrors((e)=>({ ...e, leaderNin: false })); }} placeholder="NIN" style={styles.input} /></View>{accountErrors.leaderNin ? <Text style={styles.errorText}>Leader NIN is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Role</Text><View style={[styles.inputBox, accountErrors.creatorRole && styles.inputBoxError]}><TextInput value={accountForm.creatorRole} onChangeText={(t)=>{ setAccountForm({...accountForm, creatorRole:t}); setAccountErrors((e)=>({ ...e, creatorRole: false })); }} placeholder="CEO/President/Chairman/..." style={styles.input} /></View>{accountErrors.creatorRole ? <Text style={styles.errorText}>Creator role is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Name</Text><View style={[styles.inputBox, accountErrors.creatorName && styles.inputBoxError]}><TextInput value={accountForm.creatorName} onChangeText={(t)=>{ setAccountForm({...accountForm, creatorName:t}); setAccountErrors((e)=>({ ...e, creatorName: false })); }} placeholder="Your name" style={styles.input} /></View>{accountErrors.creatorName ? <Text style={styles.errorText}>Creator name is required</Text> : null}</View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator NIN</Text><View style={[styles.inputBox, accountErrors.creatorNin && styles.inputBoxError]}><TextInput value={accountForm.creatorNin} onChangeText={(t)=>{ setAccountForm({...accountForm, creatorNin:t}); setAccountErrors((e)=>({ ...e, creatorNin: false })); }} placeholder="NIN" style={styles.input} /></View>{accountErrors.creatorNin ? <Text style={styles.errorText}>Creator NIN is required</Text> : null}</View>
               <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
             </>
           )}
@@ -1121,6 +1137,11 @@ export default function LoansScreen() {
             disabled={loading || trustScore < 100}
             onPress={async ()=>{
               if (trustScore < 100) { Alert.alert('Not eligible', 'Trust must be 100%'); return; }
+              const requiredByType = accountType === 'individual' ? ['fullName','nin','address','phone','idFrontUrl','idBackUrl'] : accountType === 'mfi' ? ['institutionName','headOfficeAddress','ceoName','ceoNin','ceoIdFrontUrl','ceoIdBackUrl','branchAddress','branchManagerName','branchManagerNin','certificate1Url','certificate2Url'] : ['orgKind','orgName','officeAddress','leaderName','leaderNin','creatorRole','creatorName','creatorNin'];
+              const nextErrors = {};
+              requiredByType.forEach((k)=>{ if(!String(accountForm[k]||'').trim()) nextErrors[k]=true; });
+              setAccountErrors(nextErrors);
+              if (Object.keys(nextErrors).length>0) { Alert.alert('Missing information', 'Please fill all required fields'); return; }
               try {
                 setLoading(true);
                 const id = Date.now().toString();
@@ -1128,6 +1149,7 @@ export default function LoansScreen() {
                 const next = [...loanAccounts.filter(a=>!(a.ownerId===userId && a.type===accountType)), record];
                 await saveAccounts(next);
                 await addLedger('loan-account-created', { id, type: accountType, ownerId: userId });
+                setAccountErrors({});
                 Alert.alert('Created', 'Loan account saved');
               } catch(e) {
                 console.log('[Loans] acct create error', e);
@@ -1217,6 +1239,7 @@ const styles = StyleSheet.create({
   inputGroup: { marginHorizontal: 16, marginBottom: 12 },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6 },
   inputBox: { borderWidth: 1, borderColor: '#ddd', backgroundColor: '#fff', borderRadius: 10 },
+  inputBoxError: { borderColor: '#e11d48', borderWidth: 2 },
   input: { height: 48, paddingHorizontal: 12, fontSize: 16, color: '#333' },
   selector: { height: 48, borderWidth: 1, borderColor: '#ddd', borderRadius: 10, backgroundColor: '#fff', paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 16, marginBottom: 8 },
   selectorText: { color: '#333' },
@@ -1268,6 +1291,8 @@ const styles = StyleSheet.create({
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12 },
   checkboxBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   checkboxLabel: { color: '#333', flex: 1 },
+  checkboxError: { borderColor: '#e11d48' },
+  errorText: { color: '#e11d48', fontSize: 12, marginTop: 4, marginHorizontal: 16 },
 
   tabRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
   tabBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
