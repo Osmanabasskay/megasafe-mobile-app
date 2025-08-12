@@ -128,6 +128,9 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.bgDecor} pointerEvents="none">
+        <LinearGradient colors={["#e0ecff", "#f5f7ff"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bgDecorGrad} />
+      </View>
       <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
         <Text style={styles.bigTitle}>Home</Text>
         <LinearGradient colors={[palette.primary, '#102B73']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCardNew}>
@@ -198,15 +201,22 @@ export default function HomeScreen() {
         <View style={styles.sectionBlock}>
           <SectionHeader title="My Groups" Icon={Users} gradient={["#f59e0b", "#ef4444"]} testID="header-groups" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-            {(groupsPreview || []).map((g) => (
-              <PressableScale key={g.id} onPress={() => router.push('/(tabs)/groups')} testID={`group-${g.id}`} style={{ paddingRight: 12 }}>
-                <LinearGradient colors={['#d7e5d6','#a7c3a5']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.groupCardMini}>
-                  <Text style={styles.groupLogoText}>{(g.name||'G').slice(0,1).toUpperCase()}</Text>
-                </LinearGradient>
-                <Text style={styles.groupNameMini}>{g.name}</Text>
-                <Text style={styles.groupSubMini}>{g.members} members, {currency(g.amount)}/{(g.frequency||'').toLowerCase()}</Text>
-              </PressableScale>
-            ))}
+            {(() => {
+              const defaults = [
+                { id: 'msc', name: 'Monthly Savers Circle', members: 24, amount: 5000, frequency: 'Monthly' },
+                { id: 'wig', name: 'Weekly Investment Group', members: 18, amount: 2000, frequency: 'Weekly' },
+              ];
+              const list = Array.isArray(groupsPreview) && groupsPreview.length > 0 ? groupsPreview : defaults;
+              return list.map((g) => (
+                <PressableScale key={g.id} onPress={() => router.push('/(tabs)/groups')} testID={`group-${g.id}`} style={{ paddingRight: 12 }}>
+                  <LinearGradient colors={['#FDE68A','#FCA5A5']} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.groupCardMini}>
+                    <Users color="#243b2f" size={26} />
+                  </LinearGradient>
+                  <Text style={styles.groupNameMini}>{g.name}</Text>
+                  <Text style={styles.groupSubMini}>{g.members} members, {currency(g.amount)}/{(g.frequency||'').toLowerCase()}</Text>
+                </PressableScale>
+              ))
+            })()}
           </ScrollView>
         </View>
       </ScrollView>
@@ -216,6 +226,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.bg },
+  bgDecor: { position: 'absolute', top: 0, left: 0, right: 0, height: 260, zIndex: -1 },
+  bgDecorGrad: { flex: 1, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   scroll: { flex: 1 },
 
   bigTitle: { fontSize: 22, fontWeight: '800', color: palette.text, marginTop: 16, marginHorizontal: 16, marginBottom: 8 },
@@ -235,16 +247,16 @@ const styles = StyleSheet.create({
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
   featureWrap: { width: 168, padding: 8 },
-  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 10, elevation: 3, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
-  iconBgSquare: { width: 100, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 4, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
+  iconBgSquare: { width: 120, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   tileText: { marginTop: 10, fontWeight: '800', color: palette.text, fontSize: 13, textAlign: 'center' },
   gridCaption: { color: '#6b7280', marginLeft: 16, marginTop: -4 },
 
-  goalCard: { width: 160, height: 120, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6ECFF' },
+  goalCard: { width: 180, height: 120, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 4 },
   goalTitle: { marginTop: 10, marginLeft: 6, color: palette.text, fontWeight: '800' },
   goalSub: { marginLeft: 6, color: '#6b7280', fontSize: 12 },
 
-  groupCardMini: { width: 160, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  groupCardMini: { width: 180, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 4 },
   groupLogoText: { fontSize: 24, fontWeight: '800', color: '#243b2f' },
   groupNameMini: { marginTop: 8, marginLeft: 4, color: palette.text, fontWeight: '700' },
   groupSubMini: { marginLeft: 4, color: '#6b7280', fontSize: 12 },
