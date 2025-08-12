@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw } from 'lucide-react-native';
+import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const palette = {
@@ -41,6 +41,17 @@ function FeatureTile({ label, Icon, colors }) {
         <Text style={styles.tileText}>{label}</Text>
       </View>
     </PressableScale>
+  );
+}
+
+function SectionHeader({ title, Icon, gradient, testID }) {
+  return (
+    <View style={styles.headerRow}>
+      <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBadge}>
+        <Icon size={16} color="#fff" />
+      </LinearGradient>
+      <Text style={styles.sectionHeader} testID={testID}>{title}</Text>
+    </View>
   );
 }
 
@@ -133,7 +144,7 @@ export default function HomeScreen() {
         </LinearGradient>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Quick Links</Text>
+          <SectionHeader title="Quick Links" Icon={Zap} gradient={[palette.primary, '#2E7CFB']} testID="header-quick-links" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {grid.map((g) => (
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.testID }} />
@@ -143,7 +154,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Payments</Text>
+          <SectionHeader title="Payments" Icon={WalletIcon} gradient={[palette.orange, '#FF9C3B']} testID="header-payments" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
               { key: 'pay-mm', label: 'Mobile Money', icon: WalletIcon, color: '#ffffff', bg: [palette.primary, '#1449CC'], onPress: () => router.push('/(tabs)/make-payment') },
@@ -157,7 +168,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Savings Goals</Text>
+          <SectionHeader title="Savings Goals" Icon={PiggyBank} gradient={["#34d399", "#059669"]} testID="header-savings" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
             {[{ key:'rent', title:'House Rent', sub:`${currency(2500)} / ${currency(10000)}`, bg:['#c6e0da','#86b3aa'], icon: Home }, { key:'school', title:'School Fees', sub:`${currency(1200)} / ${currency(5000)}`, bg:['#c5dee6','#7aa3b5'], icon: FileText }].map(card => (
               <PressableScale key={card.key} onPress={() => router.push('/(tabs)/savings')} testID={`goal-${card.key}`} style={{ paddingRight: 12 }}>
@@ -172,7 +183,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Loans</Text>
+          <SectionHeader title="Loans" Icon={HandCoins} gradient={["#60a5fa", "#3b82f6"]} testID="header-loans" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
               { key: 'loan-ind', label: 'Individual Loans', icon: FileText, color:'#0b3b2e', bg:['#b8d9d2','#91c3ba'], onPress: ()=>router.push('/(tabs)/loans') },
@@ -185,7 +196,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>My Groups</Text>
+          <SectionHeader title="My Groups" Icon={Users} gradient={["#f59e0b", "#ef4444"]} testID="header-groups" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
             {(groupsPreview || []).map((g) => (
               <PressableScale key={g.id} onPress={() => router.push('/(tabs)/groups')} testID={`group-${g.id}`} style={{ paddingRight: 12 }}>
@@ -218,7 +229,9 @@ const styles = StyleSheet.create({
   receivedBadgeText: { color: '#FFFFFF', fontWeight: '800' },
 
   sectionBlock: { marginTop: 18 },
-  sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text, marginHorizontal: 16, marginBottom: 10 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 10 },
+  headerBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
   featureWrap: { width: 168, padding: 8 },

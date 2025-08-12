@@ -39,6 +39,7 @@ import {
   ImagePlus,
   Trash2,
   Minus,
+  Share2,
 } from 'lucide-react-native';
 
 export default function GroupsScreen() {
@@ -1422,6 +1423,14 @@ export default function GroupsScreen() {
                 <CreditCard color="#FFA500" size={18} />
                 <Text style={[styles.createButtonText, styles.detailButtonText]}>Pay Contribution</Text>
               </TouchableOpacity>
+
+              {isAdmin ? (
+                <TouchableOpacity style={[styles.createButton, styles.detailButton, { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]} onPress={() => setShowAssignCollectorModal(true)} testID="assignCollectorBtn">
+                  <Users color="#FFA500" size={18} />
+                  <Text style={[styles.createButtonText, styles.detailButtonText]}>Collector</Text>
+                </TouchableOpacity>
+              ) : null}
+
               {isAdmin && (!!currentRound && !currentRound.finalized) ? (
                 <TouchableOpacity style={[styles.detailButton, { marginTop: 8 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtn">
                   <Text style={styles.detailButtonText}>Finalize Round</Text>
@@ -1628,7 +1637,7 @@ export default function GroupsScreen() {
             <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Admin Tools</Text>
             <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
               <TouchableOpacity
-                style={[styles.createButton, styles.detailButton, { flex: 1 }]}
+                style={[styles.createButton, styles.detailButton, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }]}
                 onPress={async () => {
                   try {
                     if (Platform.OS !== 'web') {
@@ -1663,11 +1672,12 @@ export default function GroupsScreen() {
                 }}
                 testID="openContactPicker"
               >
+                <UserPlus color="#FFA500" size={18} />
                 <Text style={[styles.createButtonText, styles.detailButtonText]}>add member</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.createButton, styles.detailButton, { flex: 1 }]}
+                style={[styles.createButton, styles.detailButton, { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }]}
                 onPress={async () => {
                   try {
                     let inviteUrl = '';
@@ -1685,6 +1695,7 @@ export default function GroupsScreen() {
                 }}
                 testID="sendInviteLink"
               >
+                <Share2 color="#FFA500" size={18} />
                 <Text style={[styles.createButtonText, styles.detailButtonText]}>invite</Text>
               </TouchableOpacity>
             </View>
