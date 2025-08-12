@@ -44,6 +44,7 @@ import {
   ArrowLeft,
   ChevronRight,
   CircuitBoard,
+  Upload,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
@@ -628,8 +629,7 @@ export default function ProfileScreen() {
 
       <View style={styles.sectionList}>
         <SectionRow icon={<Gift color="#FFA500" size={20} />} title="Refer & Earn" onPress={() => setScreen('refer')} />
-        <SectionRow icon={<BookUser color="#5CCEF4" size={20} />} title="NIN Registration" onPress={() => setScreen('nin')} right={ninVerified ? <Check color="#4CAF50" size={18} /> : null} />
-        <SectionRow icon={<Contact color="#5CCEF4" size={20} />} title="ID Verification" onPress={() => setScreen('id')} right={(passportUri || (idFrontUri && idBackUri)) ? <Check color="#4CAF50" size={18} /> : null} />
+        <SectionRow icon={<ShieldCheck color="#5CCEF4" size={20} />} title="Verify your identity" onPress={() => setScreen('kyc')} right={(ninVerified && idFrontUri && idBackUri && passportUri) ? <Check color="#4CAF50" size={18} /> : null} />
         <SectionRow icon={<CreditCard color="#FFA500" size={20} />} title="Payment Method" onPress={() => setScreen('payment')} right={mmNumber ? <Check color="#4CAF50" size={18} /> : null} />
         <SectionRow icon={<Shield color="#5CCEF4" size={20} />} title="Security Questions" onPress={() => setScreen('security')} right={(secA1&&secA2&&secA3)?<Check color="#4CAF50" size={18} />:null} />
         <SectionRow icon={<CircuitBoard color="#5CCEF4" size={20} />} title="Security Blockchain" onPress={() => setScreen('chain')} />
@@ -1297,62 +1297,57 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 
-  const renderIdentity = () => (
+  const handleSaveKYC = useCallback(async () => {
+    const trimmed = nin.trim();
+    if (!trimmed) { Alert.alert('Validation', 'NIN is required'); return; }
+    if (!/^[A-Za-z0-9]{8}$/.test(trimmed)) { Alert.alert('Validation', 'NIN must be exactly 8 letters or digits'); return; }
+    if (!idFrontUri || !idBackUri || !passportUri) { Alert.alert('Missing', 'Please upload front and back of ID and a passport photo'); return; }
+    try {
+      await AsyncStorage.setItem('ninNumber', trimmed);
+      await AsyncStorage.setItem('ninVerified', 'true');
+      setNinVerified(true);
+      const data = { type: 'combined', idFrontUri, idBackUri, passportUri };
+      await AsyncStorage.setItem('identityDocs', JSON.stringify(data));
+      Alert.alert('Saved', 'Identity verification saved');
+      setScreen('overview');
+    } catch (e) {
+      console.log('[Profile] Save KYC error', e);
+      Alert.alert('Error', 'Failed to save');
+    }
+  }, [nin, idFrontUri, idBackUri, passportUri]);
+
+  const renderKYC = () => (
     <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
-      <Header title="ID Verification" onBack={() => setScreen('overview')} />
+      <Header title="Verify your identity" onBack={() => setScreen('overview')} />
 
+      <View style={styles.inputGroup}>
+        <Text style={styles.inputLabel}>National Identification Number (NIN)</Text>
+        <View style={styles.inputBox}>
+          <TextInput style={styles.input} placeholder="Enter  your NIN" value={nin} onChangeText={(t)=>setNin(t.replace(/[^A-Za-z0-9]/g,''))} maxLength={8} returnKeyType="done" blurOnSubmit={false} testID="kycNinInput" />
+        </View>
+      </View>
+
+      <Text style={[styles.inputLabel, { marginTop: 4 }]}>Upload your documents</Text>
       <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Upload your government-issued ID card (front and back) or a Passport photo for security verification.</Text>
+        <Text style={styles.infoText}>Please upload clear photos of your National ID (front and back) and a Passport Photo.</Text>
       </View>
 
-      <Text style={styles.sectionHeader}>Select Document Type</Text>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
-        <TouchableOpacity style={[styles.secondaryBtn, docType === 'id' && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={() => setDocType('id')} testID="docTypeId">
-          <Text style={[styles.secondaryBtnText, { color: '#FFA500' }]}>ID Card</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.secondaryBtn, docType === 'passport' && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={() => setDocType('passport')} testID="docTypePassport">
-          <Text style={[styles.secondaryBtnText, { color: '#FFA500' }]}>Passport</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('front')} testID="uploadFront">
+        <Upload color="#333" size={28} />
+        <Text style={styles.uploadText}>{idFrontUri ? 'Replace Front of ID Card' : 'Upload Front of ID Card'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('back')} testID="uploadBack">
+        <Upload color="#333" size={28} />
+        <Text style={styles.uploadText}>{idBackUri ? 'Replace Back of ID Card' : 'Upload Back of ID Card'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('passport')} testID="uploadPassport">
+        <Upload color="#333" size={28} />
+        <Text style={styles.uploadText}>{passportUri ? 'Replace Passport Photo' : 'Upload Passport Photo'}</Text>
+      </TouchableOpacity>
 
-      {docType === 'id' ? (
-        <View>
-          <Text style={styles.sectionHeader}>Front of ID</Text>
-          {idFrontUri ? (
-            <Image source={{ uri: idFrontUri }} style={{ width: '100%', height: 180, borderRadius: 12, backgroundColor: '#eee' }} />
-          ) : null}
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => pickDocImage('front')} testID="pickFront">
-            <Text style={styles.primaryBtnText}>{idFrontUri ? 'Replace Front Image' : 'Upload Front Image'}</Text>
-          </TouchableOpacity>
-
-          <Text style={[styles.sectionHeader, { marginTop: 16 }]}>Back of ID</Text>
-          {idBackUri ? (
-            <Image source={{ uri: idBackUri }} style={{ width: '100%', height: 180, borderRadius: 12, backgroundColor: '#eee' }} />
-          ) : null}
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => pickDocImage('back')} testID="pickBack">
-            <Text style={styles.primaryBtnText}>{idBackUri ? 'Replace Back Image' : 'Upload Back Image'}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View>
-          <Text style={styles.sectionHeader}>Passport Photo</Text>
-          {passportUri ? (
-            <Image source={{ uri: passportUri }} style={{ width: '100%', height: 200, borderRadius: 12, backgroundColor: '#eee' }} />
-          ) : null}
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => pickDocImage('passport')} testID="pickPassport">
-            <Text style={styles.primaryBtnText}>{passportUri ? 'Replace Passport Image' : 'Upload Passport Image'}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleSaveIdentity} testID="saveIdentity">
-          <Text style={styles.primaryBtnText}>Save</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryBtn} onPress={clearIdentity} testID="clearIdentity">
-          <Text style={styles.secondaryBtnText}>Clear</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={[styles.primaryBtn, { marginTop: 24 }]} onPress={handleSaveKYC} testID="saveKycBtn">
+        <Text style={styles.primaryBtnText}>Save</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -1376,8 +1371,8 @@ export default function ProfileScreen() {
         return renderContact();
       case 'payment':
         return renderPaymentMethod();
-      case 'id':
-        return renderIdentity();
+      case 'kyc':
+        return renderKYC();
       case 'chain':
         return renderChain();
       case 'reports':
@@ -1781,4 +1776,6 @@ const styles = StyleSheet.create({
   linkOtpCancelText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   linkOtpVerifyButton: { flex: 2, backgroundColor: '#1877F2', borderRadius: 8, height: 48, alignItems: 'center', justifyContent: 'center' },
   linkOtpVerifyText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  uploadBox: { height: 96, borderWidth: 1, borderColor: '#ddd', borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  uploadText: { marginTop: 8, color: '#333', fontWeight: '600' },
 });
