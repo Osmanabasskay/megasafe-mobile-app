@@ -259,9 +259,9 @@ export default function LoansScreen() {
       const next = [...loans, loan];
       await saveLoans(next);
       await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a });
-      Alert.alert('Requested', 'Loan request submitted. Lender will set interest and duration during approval.');
       setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdFrontB64(''); setGuarantorIdBackB64('');
-      setView('home');
+      setView('my');
+      setTimeout(() => { try { Alert.alert('Requested', 'Loan request submitted. View it under My Loans.'); } catch {} }, 50);
     } catch (e) {
       console.log('[Loans] request error', e);
       Alert.alert('Error', 'Failed to submit request');
