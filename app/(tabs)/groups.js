@@ -1640,7 +1640,7 @@ export default function GroupsScreen() {
                 }}
                 testID="openContactPicker"
               >
-                <Text style={[styles.createButtonText, styles.detailButtonText]}>Add From Contacts</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>add member</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1657,7 +1657,7 @@ export default function GroupsScreen() {
                 }}
                 testID="sendInviteLink"
               >
-                <Text style={[styles.createButtonText, styles.detailButtonText]}>Send Invitation Link</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>invite or share</Text>
               </TouchableOpacity>
             </View>
           </View>
