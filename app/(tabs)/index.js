@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated, Pressable } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, Animated, Pressable } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Users, User, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins, GraduationCap, Bell } from 'lucide-react-native';
@@ -69,6 +70,7 @@ function NotificationItem({ item, onPress }) {
 }
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const [user, setUser] = useState({ name: '', phone: '' });
   const [mm, setMm] = useState(null);
   const [banks, setBanks] = useState([]);
@@ -201,7 +203,7 @@ export default function HomeScreen() {
       <View style={styles.bgDecor} pointerEvents="none">
         <LinearGradient colors={["#e0ecff", "#f5f7ff"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bgDecorGrad} />
       </View>
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
         <View style={styles.topBar}>
           <Text style={styles.bigTitle}>Home</Text>
           <PressableScale

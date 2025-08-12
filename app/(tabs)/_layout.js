@@ -2,9 +2,11 @@ import { Tabs, useRouter } from 'expo-router';
 import { Home as HomeIcon, Users, PiggyBank, User, HandCoins, MessageCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
@@ -25,8 +27,9 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#FFA500',
         tabBarInactiveTintColor: '#7c7c7c',
-        tabBarStyle: { backgroundColor: '#ffffff' },
+        tabBarStyle: { backgroundColor: '#ffffff', paddingBottom: Math.max(8, insets.bottom), height: 56 + Math.max(0, insets.bottom) },
         tabBarLabelStyle: { fontFamily: 'Montserrat' },
+        tabBarHideOnKeyboard: true,
         headerShown: false,
       }}
     >

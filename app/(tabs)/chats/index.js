@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Search, Pencil, Users, MessageCircle } from 'lucide-react-native';
 import { router } from 'expo-router';
 
 export default function ChatsHome() {
+  const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState([]);
   const [people, setPeople] = useState([]);
   const [q, setQ] = useState('');
@@ -175,7 +177,7 @@ export default function ChatsHome() {
           keyExtractor={(i, idx) => (i?.id || i?.phone || String(idx))}
           renderItem={renderItem}
           ListEmptyComponent={Empty}
-          contentContainerStyle={data.length === 0 ? styles.listEmptyPad : undefined}
+          contentContainerStyle={[data.length === 0 ? styles.listEmptyPad : undefined, { paddingBottom: Math.max(24, insets.bottom + 16) }]}
           testID="chatList"
         />
       </View>

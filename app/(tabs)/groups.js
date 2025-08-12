@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   View,
   Share,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import CalendarPicker from '../../components/CalendarPicker';
@@ -43,6 +43,7 @@ import {
 } from 'lucide-react-native';
 
 export default function GroupsScreen() {
+  const insets = useSafeAreaInsets();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [topTab, setTopTab] = useState('my');
 
@@ -790,7 +791,7 @@ export default function GroupsScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.scrollContainer}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
           <View style={styles.section}>
             {isLoadingGroups ? (
               <View style={styles.loadingContainer}>
@@ -1029,7 +1030,7 @@ export default function GroupsScreen() {
           </TouchableOpacity>
           <Text style={styles.screenTitle}>Joined Groups</Text>
         </View>
-        <ScrollView style={styles.scrollContainer}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
           <View style={styles.section}>
             {myGroups.length === 0 ? (
               <View style={styles.emptyState}>
@@ -1247,7 +1248,7 @@ export default function GroupsScreen() {
           </TouchableOpacity>
           <Text style={styles.screenTitle}>{g.name}</Text>
         </View>
-        <ScrollView style={styles.scrollContainer}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
           <View style={styles.section}>
             <View style={styles.groupCard}>
               <View style={{ alignItems: 'center', marginBottom: 12 }}>

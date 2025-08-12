@@ -723,7 +723,7 @@ export default function SavingsScreen() {
     
     return (
       <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollContainer}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Savings</Text>
@@ -953,7 +953,7 @@ export default function SavingsScreen() {
     
     return (
       <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.scrollContainer}>
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
           {/* Header with back button */}
           <View style={styles.screenHeader}>
             <TouchableOpacity
