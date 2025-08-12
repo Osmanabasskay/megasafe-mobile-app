@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CreditCard, Users } from 'lucide-react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { CreditCard, ShieldCheck, Fingerprint, Users } from 'lucide-react-native';
 
 export default function MakePaymentScreen() {
   const [groups, setGroups] = useState([]);
@@ -20,6 +21,12 @@ export default function MakePaymentScreen() {
   const [recipientAccountName, setRecipientAccountName] = useState('');
   const [recipientAccountHolder, setRecipientAccountHolder] = useState('');
   const [showBanks, setShowBanks] = useState(false);
+  const [verificationMethod, setVerificationMethod] = useState('password');
+  const [userPassword, setUserPassword] = useState('');
+  const [customerPasscode, setCustomerPasscode] = useState('');
+  const [collectorPassword, setCollectorPassword] = useState('');
+  const [daysContributing, setDaysContributing] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -41,19 +48,42 @@ export default function MakePaymentScreen() {
   }, []);
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
+    if (isNaN(amt) || amt <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); setIsSubmitting(false); return; }
 
-    if (forSelf) {
-      if (method === 'mm' && !mm?.number) { Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method'); return; }
-      if (method === 'bank' && !selectedBankId && !accountNumber) { Alert.alert('Bank', 'Select a linked bank or enter an account number'); return; }
+    if (method === 'physical') {
+      if (!selectedGroupId) { Alert.alert('Group required', 'Choose the group to contribute to'); setIsSubmitting(false); return; }
+      const days = parseInt(daysContributing || '0', 10);
+      if (isNaN(days) || days <= 0) { Alert.alert('Days required', 'Enter number of days contributing'); setIsSubmitting(false); return; }
+      if (!customerPasscode || customerPasscode.length < 4) { Alert.alert('Passcode', 'Enter customer passcode (min 4 digits)'); setIsSubmitting(false); return; }
+      if (!collectorPassword || collectorPassword.length < 4) { Alert.alert('Collector password', 'Enter collector password (min 4 chars)'); setIsSubmitting(false); return; }
     } else {
-      if (method === 'mm' && !otherPhone) { Alert.alert('Phone required', 'Enter recipient mobile money number'); return; }
-      if (method === 'bank') {
-        if (!recipientBank) { Alert.alert('Choose bank', 'Select the recipient bank'); return; }
-        if (!recipientAccountName) { Alert.alert('Account name', 'Enter the account name'); return; }
-        if (!recipientAccountHolder) { Alert.alert('Account holder', 'Enter the account holder'); return; }
-        if (!accountNumber) { Alert.alert('Account number', 'Enter the account number'); return; }
+      if (forSelf) {
+        if (method === 'mm' && !(mm && mm.number)) { Alert.alert('Setup', 'Add Mobile Money in Profile > Payment Method'); setIsSubmitting(false); return; }
+        if (method === 'bank' && !selectedBankId && !accountNumber) { Alert.alert('Bank', 'Select a linked bank or enter an account number'); setIsSubmitting(false); return; }
+      } else {
+        if (method === 'mm' && !otherPhone) { Alert.alert('Phone required', 'Enter recipient mobile money number'); setIsSubmitting(false); return; }
+        if (method === 'bank') {
+          if (!recipientBank) { Alert.alert('Choose bank', 'Select the recipient bank'); setIsSubmitting(false); return; }
+          if (!recipientAccountName) { Alert.alert('Account name', 'Enter the account name'); setIsSubmitting(false); return; }
+          if (!recipientAccountHolder) { Alert.alert('Account holder', 'Enter the account holder'); setIsSubmitting(false); return; }
+          if (!accountNumber) { Alert.alert('Account number', 'Enter the account number'); setIsSubmitting(false); return; }
+        }
+      }
+      if (verificationMethod === 'password') {
+        if (!userPassword || userPassword.length < 4) { Alert.alert('Password', 'Enter your password (min 4 chars)'); setIsSubmitting(false); return; }
+      } else {
+        if (Platform.OS === 'web') {
+          Alert.alert('Unavailable', 'Biometric verification is not available on web. Switch to password.'); setIsSubmitting(false); return; }
+        try {
+          const hasHardware = await LocalAuthentication.hasHardwareAsync();
+          const enrolled = await LocalAuthentication.isEnrolledAsync();
+          if (!hasHardware || !enrolled) { Alert.alert('Biometrics not set up', 'Use password instead'); setIsSubmitting(false); return; }
+          const res = await LocalAuthentication.authenticateAsync({ promptMessage: 'Verify to make payment' });
+          if (!res.success) { Alert.alert('Verification failed', 'Could not verify identity'); setIsSubmitting(false); return; }
+        } catch (err) { console.log('[MakePayment] biometric', err); Alert.alert('Error', 'Biometric check failed'); setIsSubmitting(false); return; }
       }
     }
 
@@ -80,10 +110,14 @@ export default function MakePaymentScreen() {
         groupId,
         payerId: user.id,
         method,
+        meta: method === 'physical' ? {
+          daysContributing: parseInt(daysContributing || '0', 10),
+          verifiedBy: 'collector+passcode',
+        } : { verifiedBy: verificationMethod },
         number: method === 'mm'
           ? (forSelf ? (mm?.number || '') : otherPhone)
-          : (forSelf ? (banks.find(b => b.id === selectedBankId)?.number || accountNumber || '') : accountNumber),
-        recipient: !forSelf ? {
+          : (method === 'bank' ? (forSelf ? (banks.find(b => b.id === selectedBankId)?.number || accountNumber || '') : accountNumber) : ''),
+        recipient: !forSelf && method !== 'physical' ? {
           phone: method === 'mm' ? otherPhone : '',
           bank: method === 'bank' ? recipientBank : '',
           accountName: method === 'bank' ? recipientAccountName : '',
@@ -92,8 +126,9 @@ export default function MakePaymentScreen() {
       };
       await AsyncStorage.setItem('payments', JSON.stringify([...list, entry]));
       Alert.alert('Success', 'Payment saved');
-      setAmount(''); setAccountNumber(''); setNote(''); setOtherPhone(''); setRecipientBank(''); setRecipientAccountName(''); setRecipientAccountHolder('');
+      setAmount(''); setAccountNumber(''); setNote(''); setOtherPhone(''); setRecipientBank(''); setRecipientAccountName(''); setRecipientAccountHolder(''); setUserPassword(''); setCustomerPasscode(''); setCollectorPassword(''); setDaysContributing('');
     } catch (e) { console.log('[MakePayment] save', e); Alert.alert('Error', 'Failed to save'); }
+    finally { setIsSubmitting(false); }
   };
 
   const maskAcct = (n) => (n && n.length > 4 ? `${'*'.repeat(Math.max(0, n.length - 4))}${n.slice(-4)}` : n);
@@ -189,6 +224,27 @@ export default function MakePaymentScreen() {
             )
           ) : null}
 
+          {method === 'physical' ? (
+            <>
+              <View style={styles.infoCard}>
+                <Text style={styles.labelInline}>Date</Text>
+                <Text style={styles.muted}>{new Date().toLocaleString()}</Text>
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Days contributing</Text>
+                <View style={styles.inputBox}><TextInput testID="daysContributing" style={styles.input} value={daysContributing} onChangeText={(t)=>setDaysContributing(t.replace(/[^0-9]/g,''))} placeholder="e.g. 30" keyboardType="number-pad" /></View>
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Customer passcode</Text>
+                <View style={styles.inputBox}><TextInput testID="customerPasscode" style={styles.input} value={customerPasscode} onChangeText={setCustomerPasscode} placeholder="Enter customer's passcode" secureTextEntry /></View>
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Collector password</Text>
+                <View style={styles.inputBox}><TextInput testID="collectorPassword" style={styles.input} value={collectorPassword} onChangeText={setCollectorPassword} placeholder="Enter your password" secureTextEntry /></View>
+              </View>
+            </>
+          ) : null}
+
           {(method === 'bank' && ((forSelf && !selectedBankId) || !forSelf)) ? (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{forSelf ? 'Other Bank Account Number' : 'Recipient Account Number'}</Text>
@@ -201,12 +257,41 @@ export default function MakePaymentScreen() {
             <View style={styles.inputBox}><TextInput style={styles.input} value={amount} onChangeText={(t)=>setAmount(t.replace(/[^0-9.]/g,''))} placeholder="0.00" keyboardType="numeric" /></View>
           </View>
 
+          {method !== 'physical' ? (
+            <>
+              <Text style={styles.label}>Verification</Text>
+              <View style={styles.row}>
+                <TouchableOpacity style={[styles.pill, verificationMethod==='password' && styles.pillActive]} onPress={() => setVerificationMethod('password')} testID="verifyPassword">
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <ShieldCheck size={16} color={verificationMethod==='password' ? '#FFA500' : '#777'} />
+                    <Text style={[styles.pillText, verificationMethod==='password' && styles.pillTextActive]}>Password</Text>
+                  </View>
+                </TouchableOpacity>
+                {Platform.OS !== 'web' ? (
+                  <TouchableOpacity style={[styles.pill, verificationMethod==='biometric' && styles.pillActive]} onPress={() => setVerificationMethod('biometric')} testID="verifyBiometric">
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Fingerprint size={16} color={verificationMethod==='biometric' ? '#FFA500' : '#777'} />
+                      <Text style={[styles.pillText, verificationMethod==='biometric' && styles.pillTextActive]}>Thumbprint</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {verificationMethod === 'password' ? (
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Your password</Text>
+                  <View style={styles.inputBox}><TextInput testID="userPassword" style={styles.input} value={userPassword} onChangeText={setUserPassword} placeholder="Enter your password" secureTextEntry /></View>
+                </View>
+              ) : null}
+            </>
+          ) : null}
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Note (optional)</Text>
             <View style={styles.inputBox}><TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="Reference" /></View>
           </View>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={handleSubmit} testID="confirmMakePayment"><Text style={styles.primaryBtnText}>Confirm Payment</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.primaryBtn, isSubmitting && { opacity: 0.6 }]} disabled={isSubmitting} onPress={handleSubmit} testID="confirmMakePayment"><Text style={styles.primaryBtnText}>{isSubmitting ? 'Processing...' : 'Confirm Payment'}</Text></TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -230,6 +315,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, backgroundColor: '#fff' },
   headerText: { fontSize: 18, fontWeight: '800', color: '#333' },
   label: { marginHorizontal: 16, marginTop: 12, color: '#333', fontWeight: '700' },
+  labelInline: { color: '#333', fontWeight: '700', marginBottom: 4 },
   row: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginTop: 8 },
   pill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd' },
   pillActive: { backgroundColor: '#fff5e6', borderColor: '#FFA500' },
