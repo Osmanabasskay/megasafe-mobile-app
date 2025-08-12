@@ -1392,22 +1392,7 @@ export default function GroupsScreen() {
               </View>
             ) : null}
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, marginTop: 12 }} contentContainerStyle={{ gap: 10 }}>
-              <TouchableOpacity style={[styles.detailButton, { flexDirection: 'row', gap: 8, paddingHorizontal: 14 }]} onPress={() => { setPaymentAmount(String(g.amount || '')); setPaymentForMemberId(activeRecipientId); const canManual = !!activeAssignment && activeAssignment.collectorId === currentUser.id; setPaymentProvider(canManual ? 'Manual Collection' : 'Orange Money'); setShowPaymentModal(true); }} testID="payContributionBtn">
-                <CreditCard color="#FFA500" size={18} />
-                <Text style={styles.detailButtonText}>Pay Contribution</Text>
-              </TouchableOpacity>
-              {isAdmin && (!!currentRound && !currentRound.finalized) ? (
-                <TouchableOpacity style={[styles.detailButton, { paddingHorizontal: 14 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtnInline">
-                  <Text style={styles.detailButtonText}>Finalize Round</Text>
-                </TouchableOpacity>
-              ) : null}
-              {isAdmin ? (
-                <TouchableOpacity style={[styles.detailButton, { paddingHorizontal: 14 }]} onPress={() => { setAssignCollectorId(currentUser.id); setAssignIdImage(''); setAssignMembersMap({}); setShowAssignCollectorModal(true); }} testID="assignCollectorInline">
-                  <Text style={styles.detailButtonText}>{activeAssignment ? 'Reassign Collector' : 'Assign Collector'}</Text>
-                </TouchableOpacity>
-              ) : null}
-            </ScrollView>
+
 
             <View style={[styles.groupCard, { marginTop: 12 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, justifyContent: 'space-between' }}>
@@ -1437,6 +1422,11 @@ export default function GroupsScreen() {
                 <CreditCard color="#FFA500" size={18} />
                 <Text style={[styles.createButtonText, styles.detailButtonText]}>Pay Contribution</Text>
               </TouchableOpacity>
+              {isAdmin && (!!currentRound && !currentRound.finalized) ? (
+                <TouchableOpacity style={[styles.detailButton, { marginTop: 8 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtn">
+                  <Text style={styles.detailButtonText}>Finalize Round</Text>
+                </TouchableOpacity>
+              ) : null}
 
               <View style={{ marginTop: 12 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Totals by Recipient</Text>
