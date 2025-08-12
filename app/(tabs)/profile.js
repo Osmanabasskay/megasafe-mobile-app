@@ -1336,14 +1336,34 @@ export default function ProfileScreen() {
         <Upload color="#333" size={28} />
         <Text style={styles.uploadText}>{idFrontUri ? 'Replace Front of ID Card' : 'Upload Front of ID Card'}</Text>
       </TouchableOpacity>
+      {idFrontUri ? (
+        <View style={styles.previewWrap}>
+          <Image source={{ uri: idFrontUri }} style={styles.previewImg} testID="previewFront" />
+          <Text style={styles.previewCaption}>Front of ID</Text>
+        </View>
+      ) : null}
+
       <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('back')} testID="uploadBack">
         <Upload color="#333" size={28} />
         <Text style={styles.uploadText}>{idBackUri ? 'Replace Back of ID Card' : 'Upload Back of ID Card'}</Text>
       </TouchableOpacity>
+      {idBackUri ? (
+        <View style={styles.previewWrap}>
+          <Image source={{ uri: idBackUri }} style={styles.previewImg} testID="previewBack" />
+          <Text style={styles.previewCaption}>Back of ID</Text>
+        </View>
+      ) : null}
+
       <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('passport')} testID="uploadPassport">
         <Upload color="#333" size={28} />
         <Text style={styles.uploadText}>{passportUri ? 'Replace Passport Photo' : 'Upload Passport Photo'}</Text>
       </TouchableOpacity>
+      {passportUri ? (
+        <View style={styles.previewWrap}>
+          <Image source={{ uri: passportUri }} style={styles.previewImg} testID="previewPassport" />
+          <Text style={styles.previewCaption}>Passport Photo</Text>
+        </View>
+      ) : null}
 
       <TouchableOpacity style={[styles.primaryBtn, { marginTop: 24 }]} onPress={handleSaveKYC} testID="saveKycBtn">
         <Text style={styles.primaryBtnText}>Save</Text>
@@ -1778,4 +1798,8 @@ const styles = StyleSheet.create({
   linkOtpVerifyText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   uploadBox: { height: 96, borderWidth: 1, borderColor: '#ddd', borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   uploadText: { marginTop: 8, color: '#333', fontWeight: '600' },
+
+  previewWrap: { alignItems: 'center', marginBottom: 16 },
+  previewImg: { width: 200, height: 120, borderRadius: 10, resizeMode: 'cover' },
+  previewCaption: { marginTop: 6, color: '#666', fontSize: 12 }
 });
