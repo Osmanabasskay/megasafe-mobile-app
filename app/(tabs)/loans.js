@@ -65,6 +65,7 @@ export default function LoansScreen() {
 
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [selectedOrg, setSelectedOrg] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
 
   const [amount, setAmount] = useState('');
   const [interest, setInterest] = useState('');
@@ -1054,7 +1055,13 @@ export default function LoansScreen() {
             </View>
           ) : (
             list.map((g) => (
-              <View key={g.id} style={styles.card} testID={`loanGroup-${g.id}`}>
+              <TouchableOpacity
+                key={g.id}
+                style={styles.card}
+                onPress={() => { console.log('[Loans] open group details', g.id); setSelectedGroup(g); setView('loanGroupDetails'); }}
+                testID={`loanGroup-${g.id}`}
+                accessibilityRole="button"
+              >
                 <View style={styles.cardHeader}>
                   <View style={styles.cardHeaderLeft}>
                     <Users color="#5CCEF4" size={20} />
@@ -1064,9 +1071,59 @@ export default function LoansScreen() {
                 </View>
                 <View style={styles.cardRow}><Text style={styles.cardText}>Members: {(g.membersList||[]).length}</Text></View>
                 {g.nextEvent ? <View style={styles.cardRow}><Calendar color="#666" size={16} /><Text style={styles.cardText}>{g.nextEvent}</Text></View> : null}
-              </View>
+              </TouchableOpacity>
             ))
           )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
+
+  const renderLoanGroupDetails = () => {
+    if (!selectedGroup) return null;
+    const members = selectedGroup.membersList || [];
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader(selectedGroup.name, () => setView('loanGroups'))}
+        <ScrollView style={styles.scroll}>
+          <View style={styles.card}>
+            <View style={styles.cardRow}><Users color="#666" size={16} /><Text style={styles.cardText}>Members: {members.length}</Text></View>
+            {selectedGroup.frequency ? (
+              <View style={styles.cardRow}><Calendar color="#666" size={16} /><Text style={styles.cardText}>{selectedGroup.frequency}</Text></View>
+            ) : null}
+            {selectedGroup.nextEvent ? (
+              <View style={styles.cardRow}><Calendar color="#666" size={16} /><Text style={styles.cardText}>{selectedGroup.nextEvent}</Text></View>
+            ) : null}
+          </View>
+
+          <View style={[styles.card, { marginTop: 12 }]}>
+            <Text style={styles.sectionTitle}>Members</Text>
+            {members.length === 0 ? (
+              <Text style={styles.muted}>No members listed</Text>
+            ) : (
+              members.map((m) => (
+                <View key={m.id || m.phone} style={styles.listRowBetween}>
+                  <View style={styles.rowLeft}>
+                    <Users color="#5CCEF4" size={18} />
+                    <View>
+                      <Text style={styles.listText}>{m.name || m.phone}</Text>
+                      {m.phone ? <Text style={styles.smallMuted}>{m.phone}</Text> : null}
+                    </View>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+
+          <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { margin: 16 }]}>
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={() => { console.log('[Loans] apply from group', selectedGroup.id); setView('request'); }}
+              testID="applyFromGroupBtn"
+            >
+              <Text style={styles.primaryBtnText}>Apply for Loan</Text>
+            </TouchableOpacity>
+          </LinearGradient>
         </ScrollView>
       </SafeAreaView>
     );
@@ -1279,6 +1336,7 @@ export default function LoansScreen() {
       {view === 'ledger' && renderLedger()}
       {view === 'accounts' && renderAccounts()}
       {view === 'loanGroups' && renderLoanGroups()}
+      {view === 'loanGroupDetails' && renderLoanGroupDetails()}
     </>
   );
 }
