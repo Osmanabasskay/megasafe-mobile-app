@@ -13,10 +13,12 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Print from 'expo-print';
+import * as ImagePicker from 'expo-image-picker';
 import {
   HandCoins,
   Building2,
@@ -65,7 +67,8 @@ export default function LoansScreen() {
   const [term, setTerm] = useState('');
   const [purpose, setPurpose] = useState('');
   const [guarantorNin, setGuarantorNin] = useState('');
-  const [guarantorIdUrl, setGuarantorIdUrl] = useState('');
+  const [guarantorIdFrontB64, setGuarantorIdFrontB64] = useState('');
+  const [guarantorIdBackB64, setGuarantorIdBackB64] = useState('');
 
   const [showRepayModal, setShowRepayModal] = useState(false);
   const [repayAmount, setRepayAmount] = useState('');
@@ -193,6 +196,37 @@ export default function LoansScreen() {
     }
   }, [ledger, lastHash, saveLedger]);
 
+  const pickGuarantorImage = useCallback(async (side) => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please allow photo library access to attach ID');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        base64: true,
+        quality: 0.6,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [3, 2],
+      });
+      if (result.canceled) return;
+      const asset = result.assets && result.assets[0];
+      const b64 = asset?.base64 ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}` : '';
+      if (!b64) {
+        Alert.alert('Error', 'Failed to read image');
+        return;
+      }
+      if (side === 'front') setGuarantorIdFrontB64(b64);
+      else setGuarantorIdBackB64(b64);
+    } catch (e) {
+      console.log('[Loans] pickGuarantorImage error', e);
+      Alert.alert('Error', 'Could not pick image');
+    }
+  }, []);
+
   const requestLoan = useCallback(async () => {
     const a = parseFloat(amount);
     if (trustScore < 100) { Alert.alert('Not eligible', 'Complete your Trust to 100% to request a loan'); return; }
@@ -202,6 +236,7 @@ export default function LoansScreen() {
     const myAccount = loanAccounts.find((acc)=>acc.ownerId===userId && acc.type==='individual');
     if (!myAccount) { Alert.alert('Create Loan Account', 'Create an Individual Loan Account first (Loans → Loan Accounts)'); setView('accounts'); return; }
     if (!guarantorNin.trim()) { Alert.alert('Required', 'Enter Guarantor NIN'); return; }
+    if (!guarantorIdFrontB64 || !guarantorIdBackB64) { Alert.alert('Required', 'Attach guarantor ID card photos (front and back)'); return; }
     if (!mobileMoney && (!linkedBanks || linkedBanks.length === 0)) { Alert.alert('Payment Method Needed', 'Add Mobile Money or Bank details in Profile before requesting.'); return; }
     try {
       setLoading(true);
@@ -217,7 +252,7 @@ export default function LoansScreen() {
         createdAt: new Date().toISOString(),
         orgId: '',
         repayments: [],
-        guarantor: { nin: guarantorNin.trim(), idUrl: guarantorIdUrl.trim() },
+        guarantor: { nin: guarantorNin.trim(), idFrontB64: guarantorIdFrontB64, idBackB64: guarantorIdBackB64 },
         payerDestinations: { mobileMoney: mobileMoney || null, bank: linkedBanks[0] || null },
         borrowerAccountSnapshot: myAccount,
       };
@@ -225,7 +260,7 @@ export default function LoansScreen() {
       await saveLoans(next);
       await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a });
       Alert.alert('Requested', 'Loan request submitted. Lender will set interest and duration during approval.');
-      setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdUrl('');
+      setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdFrontB64(''); setGuarantorIdBackB64('');
       setView('my');
     } catch (e) {
       console.log('[Loans] request error', e);
@@ -233,7 +268,7 @@ export default function LoansScreen() {
     } finally {
       setLoading(false);
     }
-  }, [amount, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdUrl, loanAccounts, mobileMoney, linkedBanks]);
+  }, [amount, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdFrontB64, guarantorIdBackB64, loanAccounts, mobileMoney, linkedBanks]);
 
   const approveLoan = useCallback(async (org, loan, params) => {
     try {
@@ -363,7 +398,7 @@ export default function LoansScreen() {
   const Terms = () => (
     <View style={[styles.card, { marginTop: 12 }]}> 
       <Text style={styles.sectionTitle}>Loan Terms & Conditions</Text>
-      <Text style={styles.muted}>• Eligibility requires Trust 100% and verified identity (NIN and ID/Passport).{"\n"}
+      <Text style={styles.muted}>• Eligibility requires Trust 100% and verified identity (NIN and ID/Passport.{"\n"}
       • Providing false information leads to denial and potential suspension.{"\n"}
       • Disbursement is sent to your linked Mobile Money or Bank details.{"\n"}
       • Late or missed repayments may affect eligibility and organization rules.{"\n"}
@@ -476,9 +511,22 @@ export default function LoansScreen() {
               </View>
             </View>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Guarantor ID Doc URL</Text>
-              <View style={styles.inputBox}>
-                <TextInput value={guarantorIdUrl} onChangeText={setGuarantorIdUrl} placeholder="https://..." style={styles.input} testID="guarantorIdUrl" />
+              <Text style={styles.inputLabel}>Attach ID Card Photos</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickGuarantorImage('front')} testID="pickGuarantorFront">
+                  <Text style={styles.secondaryBtnText}>{guarantorIdFrontB64 ? 'Replace Front' : 'Pick Front'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickGuarantorImage('back')} testID="pickGuarantorBack">
+                  <Text style={styles.secondaryBtnText}>{guarantorIdBackB64 ? 'Replace Back' : 'Pick Back'}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  {guarantorIdFrontB64 ? <Image source={{ uri: guarantorIdFrontB64 }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
+                </View>
+                <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                  {guarantorIdBackB64 ? <Image source={{ uri: guarantorIdBackB64 }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
+                </View>
               </View>
             </View>
           </View>
