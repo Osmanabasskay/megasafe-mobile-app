@@ -42,6 +42,7 @@ import {
 
 export default function GroupsScreen() {
   const [currentScreen, setCurrentScreen] = useState('home');
+  const [topTab, setTopTab] = useState('my');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
@@ -79,18 +80,15 @@ export default function GroupsScreen() {
   const reminderTimer = useRef(null);
   const [lastReminderSlots, setLastReminderSlots] = useState({});
 
-  // Collector assignment state
   const [showAssignCollectorModal, setShowAssignCollectorModal] = useState(false);
   const [assignCollectorId, setAssignCollectorId] = useState('');
   const [assignIdImage, setAssignIdImage] = useState('');
   const [assignMembersMap, setAssignMembersMap] = useState({});
 
-  // Admin add member
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPhone, setNewMemberPhone] = useState('');
   
-  // Contacts picker state
   const [showContactPickerModal, setShowContactPickerModal] = useState(false);
   const [contacts, setContacts] = useState([]);
   const [newContactName, setNewContactName] = useState('');
@@ -751,68 +749,70 @@ export default function GroupsScreen() {
   );
 
   const renderHomeScreen = () => {
-    const myGroups = availableGroups.filter((g) => isUserInGroup(g));
+    const createdByYou = availableGroups.filter((g) => (g.membersList||[]).some(m => m.role === 'Admin' && (m.id === currentUser.id || (!!currentUser.phone && m.phone === currentUser.phone))));
+    const joinedByYou = availableGroups.filter((g) => isUserInGroup(g) && !(g.membersList||[]).some(m => m.role === 'Admin' && (m.id === currentUser.id || (!!currentUser.phone && m.phone === currentUser.phone))));
+    const requestable = availableGroups.filter((g) => !isUserInGroup(g));
+
+    const data = topTab === 'my' ? createdByYou : topTab === 'joined' ? joinedByYou : requestable;
+
+    const ItemRow = ({ item }) => (
+      <TouchableOpacity style={styles.listRow} onPress={() => (isUserInGroup(item) ? openDetails(item) : handleJoinGroup(item))}>
+        <View style={styles.listRowIconBox}>
+          <Users color="#7a6b65" size={20} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.listRowTitle}>{item.name}</Text>
+          <Text style={styles.listRowSubtitle}>{item.members} members</Text>
+        </View>
+        <ChevronRight color="#7a6b65" size={20} />
+      </TouchableOpacity>
+    );
+
     return (
       <SafeAreaView style={styles.container}>
+        <View style={styles.topHeaderBar}>
+          <Text style={styles.topHeaderTitle}>Osusu Groups</Text>
+        </View>
+
+        <View style={styles.segmentBar}>
+          <TouchableOpacity onPress={() => setTopTab('my')} style={[styles.segmentBtn, topTab === 'my' && styles.segmentBtnActive]} testID="tabMy">
+            <Text style={[styles.segmentText, topTab === 'my' && styles.segmentTextActive]}>My Groups</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setTopTab('joined')} style={[styles.segmentBtn, topTab === 'joined' && styles.segmentBtnActive]} testID="tabJoined">
+            <Text style={[styles.segmentText, topTab === 'joined' && styles.segmentTextActive]}>Joined Groups</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setTopTab('request')} style={[styles.segmentBtn, topTab === 'request' && styles.segmentBtnActive]} testID="tabRequest">
+            <Text style={[styles.segmentText, topTab === 'request' && styles.segmentTextActive]}>Request</Text>
+          </TouchableOpacity>
+        </View>
+
         <ScrollView style={styles.scrollContainer}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Osusu Groups</Text>
-            <Text style={styles.headerSubtitle}>Save together, grow together</Text>
-          </View>
-
-          <View style={[styles.actionButtons, { flexWrap: 'wrap' }]}>
-            <TouchableOpacity style={styles.actionButton} onPress={() => setCurrentScreen('create')} testID="createGroupBtn">
-              <Plus color="#fff" size={20} />
-              <Text style={styles.actionButtonText}>Create Group</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => setCurrentScreen('join')} testID="joinGroupBtn">
-              <UserPlus color="#FFA500" size={20} />
-              <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Join Group</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, styles.secondaryButton]} onPress={() => setCurrentScreen('joined')} testID="joinedGroupsBtn">
-              <Check color="#FFA500" size={20} />
-              <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>Joined Groups</Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>My Groups ({myGroups.length})</Text>
-            {myGroups.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Users color="#ccc" size={48} />
-                <Text style={styles.emptyStateText}>You haven’t joined any groups yet</Text>
-                <Text style={styles.emptyStateSubtext}>Create or join a group to start saving together</Text>
-              </View>
-            ) : (
-              <FlatList data={myGroups} renderItem={renderGroupCard} keyExtractor={(item) => item.id} scrollEnabled={false} showsVerticalScrollIndicator={false} />
-            )}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Available Groups</Text>
             {isLoadingGroups ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator color="#FFA500" size="large" />
                 <Text style={styles.loadingText}>Loading groups...</Text>
               </View>
+            ) : data.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Users color="#ccc" size={48} />
+                <Text style={styles.emptyStateText}>{topTab === 'request' ? 'No groups available' : 'No groups yet'}</Text>
+                <Text style={styles.emptyStateSubtext}>{topTab === 'request' ? 'Tap Join Existing Group below' : 'Tap Create New Group below'}</Text>
+              </View>
             ) : (
-              <FlatList
-                data={availableGroups.filter((g) => !isUserInGroup(g))}
-                renderItem={renderGroupCard}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                  <View style={styles.emptyState}>
-                    <Users color="#ccc" size={48} />
-                    <Text style={styles.emptyStateText}>No available groups</Text>
-                    <Text style={styles.emptyStateSubtext}>Be the first to create a group!</Text>
-                  </View>
-                }
-              />
+              <FlatList data={data} renderItem={ItemRow} keyExtractor={(item) => item.id} scrollEnabled={false} />
             )}
           </View>
         </ScrollView>
+
+        <View style={styles.bottomCtas}>
+          <TouchableOpacity style={styles.primaryCta} onPress={() => setCurrentScreen('create')} testID="primaryCreate">
+            <Text style={styles.primaryCtaText}>Create New Group</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryCta} onPress={() => setCurrentScreen('join')} testID="secondaryJoin">
+            <Text style={styles.secondaryCtaText}>Join Existing Group</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   };
@@ -1555,7 +1555,6 @@ export default function GroupsScreen() {
           )}
         </View>
 
-        {/* Collector Notice */}
         {activeAssignment ? (
           <View style={[styles.groupCard, { marginTop: 12 }]}>
             <Text style={[styles.sectionTitle, { marginBottom: 6 }]}>Collector Assigned</Text>
@@ -1578,7 +1577,6 @@ export default function GroupsScreen() {
           </View>
         ) : null}
 
-        {/* Admin: Manage Members & Collector */}
         {isAdmin ? (
           <View style={[styles.groupCard, { marginTop: 12 }]}>
             <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Admin Tools</Text>
@@ -1862,9 +1860,13 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: 'bold', color: '#00157f', marginBottom: 5, fontFamily: 'Montserrat' },
   headerSubtitle: { fontSize: 16, color: '#666', fontFamily: 'Inter' },
 
-  screenHeader: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
-  backButton: { marginRight: 15, padding: 5 },
-  screenTitle: { fontSize: 20, fontWeight: 'bold', color: '#00157f', fontFamily: 'Montserrat' },
+  topHeaderBar: { paddingTop: 16, paddingBottom: 8, alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
+  topHeaderTitle: { fontSize: 18, fontWeight: '700', color: '#2b2b2b', fontFamily: 'Montserrat' },
+  segmentBar: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  segmentBtn: { flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  segmentBtnActive: { borderBottomColor: '#000' },
+  segmentText: { color: '#6b6b6b', fontWeight: '600', fontFamily: 'Inter' },
+  segmentTextActive: { color: '#000' },
 
   actionButtons: { flexDirection: 'row', padding: 20, gap: 15 },
   actionButton: { flex: 1, backgroundColor: '#FFA500', borderRadius: 24, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
@@ -1895,6 +1897,17 @@ const styles = StyleSheet.create({
   joinButtonTextDisabled: { color: '#ccc' },
   joinedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f5e8', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   joinedText: { color: '#4CAF50', fontSize: 14, fontWeight: 'bold', marginLeft: 6, fontFamily: 'Inter' },
+
+  listRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 12, borderRadius: 12, marginBottom: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+  listRowIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f1ebe8', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  listRowTitle: { fontSize: 16, fontWeight: '600', color: '#2b2b2b', fontFamily: 'Inter' },
+  listRowSubtitle: { fontSize: 12, color: '#8b8b8b', marginTop: 2, fontFamily: 'Inter' },
+
+  bottomCtas: { paddingHorizontal: 16, paddingBottom: 24, paddingTop: 8, backgroundColor: 'transparent' },
+  primaryCta: { backgroundColor: '#ef6c00', borderRadius: 28, height: 54, alignItems: 'center', justifyContent: 'center' },
+  primaryCtaText: { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: 'Montserrat' },
+  secondaryCta: { marginTop: 12, backgroundColor: '#f5f1ee', borderRadius: 28, height: 54, alignItems: 'center', justifyContent: 'center' },
+  secondaryCtaText: { color: '#2b2b2b', fontWeight: '700', fontSize: 16, fontFamily: 'Montserrat' },
 
   formContainer: { padding: 20 },
   inputGroup: { marginBottom: 20 },
