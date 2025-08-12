@@ -15,6 +15,7 @@ import {
   View,
   Image,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Print from 'expo-print';
@@ -438,7 +439,7 @@ export default function LoansScreen() {
   const renderHome = () => (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll}>
-        <View style={styles.headerCard}>
+        <LinearGradient colors={["#fff2e0", "#ffd8a8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerCard}>
           <View style={styles.headerLeft}>
             <HandCoins color="#FFA500" size={28} />
             <View>
@@ -446,28 +447,30 @@ export default function LoansScreen() {
               <Text style={styles.headerSubtitle}>Request, manage and repay</Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
         <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
+          <LinearGradient colors={["#e8f7ee", "#c9f0d5"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
             <ShieldCheck color="#4CAF50" size={22} />
             <Text style={styles.summaryValue}>{trustScore}%</Text>
             <Text style={styles.summaryLabel}>Trust</Text>
-          </View>
-          <View style={styles.summaryCard}>
+          </LinearGradient>
+          <LinearGradient colors={["#e6f7ff", "#c7ecff"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
             <CreditCard color="#5CCEF4" size={22} />
             <Text style={styles.summaryValue}>{formatCurrency(activeOutstanding)}</Text>
             <Text style={styles.summaryLabel}>Outstanding</Text>
-          </View>
-          <View style={styles.summaryCard}>
+          </LinearGradient>
+          <LinearGradient colors={["#fff2e0", "#ffd8a8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
             <Calendar color="#666" size={22} />
             <Text style={styles.summaryValue}>{myLoans.length}</Text>
             <Text style={styles.summaryLabel}>My Loans</Text>
-          </View>
+          </LinearGradient>
         </View>
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={() => setView('request')} testID="requestLoanBtn">
-            <Text style={styles.primaryBtnText}>Request Loan</Text>
-          </TouchableOpacity>
+          <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryGradient}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => setView('request')} testID="requestLoanBtn">
+              <Text style={styles.primaryBtnText}>Request Loan</Text>
+            </TouchableOpacity>
+          </LinearGradient>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('my')} testID="myLoansBtn">
             <Text style={styles.secondaryBtnText}>My Loans</Text>
           </TouchableOpacity>
@@ -569,9 +572,11 @@ export default function LoansScreen() {
             <Text style={styles.checkboxLabel}>I have read and agree to the Terms & Conditions</Text>
           </TouchableOpacity>
 
+          <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { marginHorizontal: 16 }]}>
           <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={!agreedTerms} testID="submitLoanRequest">
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Submit Request</Text>}
           </TouchableOpacity>
+        </LinearGradient>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -643,9 +648,11 @@ export default function LoansScreen() {
               <Text style={styles.kvLabel}>Outstanding</Text><Text style={[styles.kvValue, { color: '#e67e22' }]}>{formatCurrency(totals.outstanding)}</Text>
             </View>
             {selectedLoan.status === 'active' ? (
-              <TouchableOpacity style={[styles.primaryBtn, { marginTop: 8 }]} onPress={() => setShowRepayModal(true)} testID="repayBtn">
-                <Text style={styles.primaryBtnText}>Repay</Text>
-              </TouchableOpacity>
+              <LinearGradient colors={["#22c55e", "#16a34a"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { marginTop: 8 }]}>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => setShowRepayModal(true)} testID="repayBtn">
+                  <Text style={styles.primaryBtnText}>Repay</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             ) : null}
             <TouchableOpacity style={[styles.secondaryBtn, { marginTop: 8 }]} onPress={() => exportPaymentsPdf(selectedLoan)} testID="exportPdfBtn">
               <Download color="#FFA500" size={18} />
@@ -712,9 +719,11 @@ export default function LoansScreen() {
                   </TouchableOpacity>
                 ))
               )}
-              <TouchableOpacity style={[styles.primaryBtn, { marginTop: 10 }]} onPress={repayLoan} disabled={loading} testID="confirmRepay">
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Confirm</Text>}
-              </TouchableOpacity>
+              <LinearGradient colors={["#22c55e", "#16a34a"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { marginTop: 10 }]}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={repayLoan} disabled={loading} testID="confirmRepay">
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Confirm</Text>}
+            </TouchableOpacity>
+          </LinearGradient>
             </View>
           </View>
         </Modal>
@@ -925,9 +934,11 @@ export default function LoansScreen() {
                     <HandCoins color="#FFA500" size={18} />
                     <Text style={styles.listText}>#{l.id.slice(-6)} • {l.borrowerName} • {formatCurrency(l.amount)}</Text>
                   </View>
-                  <TouchableOpacity style={styles.primaryBtn} onPress={() => disburseLoan(selectedOrg, l)} testID={`disburse-${l.id}`}>
-                    <Text style={styles.primaryBtnText}>Disburse</Text>
-                  </TouchableOpacity>
+                  <LinearGradient colors={["#5CCEF4", "#3498db"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryGradient}>
+                    <TouchableOpacity style={styles.primaryBtn} onPress={() => disburseLoan(selectedOrg, l)} testID={`disburse-${l.id}`}>
+                      <Text style={styles.primaryBtnText}>Disburse</Text>
+                    </TouchableOpacity>
+                  </LinearGradient>
                 </View>
               ))
             )}
@@ -1097,30 +1108,32 @@ export default function LoansScreen() {
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.primaryBtn, { margin: 16 }]}
-          disabled={loading || trustScore < 100}
-          onPress={async ()=>{
-            if (trustScore < 100) { Alert.alert('Not eligible', 'Trust must be 100%'); return; }
-            try {
-              setLoading(true);
-              const id = Date.now().toString();
-              const record = { id, type: accountType, ownerId: userId, data: { ...accountForm } };
-              const next = [...loanAccounts.filter(a=>!(a.ownerId===userId && a.type===accountType)), record];
-              await saveAccounts(next);
-              await addLedger('loan-account-created', { id, type: accountType, ownerId: userId });
-              Alert.alert('Created', 'Loan account saved');
-            } catch(e) {
-              console.log('[Loans] acct create error', e);
-              Alert.alert('Error', 'Failed to save account');
-            } finally {
-              setLoading(false);
-            }
-          }}
-          testID="saveAccountBtn"
-        >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save Account</Text>}
-        </TouchableOpacity>
+        <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { margin: 16 }]}>
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            disabled={loading || trustScore < 100}
+            onPress={async ()=>{
+              if (trustScore < 100) { Alert.alert('Not eligible', 'Trust must be 100%'); return; }
+              try {
+                setLoading(true);
+                const id = Date.now().toString();
+                const record = { id, type: accountType, ownerId: userId, data: { ...accountForm } };
+                const next = [...loanAccounts.filter(a=>!(a.ownerId===userId && a.type===accountType)), record];
+                await saveAccounts(next);
+                await addLedger('loan-account-created', { id, type: accountType, ownerId: userId });
+                Alert.alert('Created', 'Loan account saved');
+              } catch(e) {
+                console.log('[Loans] acct create error', e);
+                Alert.alert('Error', 'Failed to save account');
+              } finally {
+                setLoading(false);
+              }
+            }}
+            testID="saveAccountBtn"
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save Account</Text>}
+          </TouchableOpacity>
+        </LinearGradient>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>My Accounts</Text>
@@ -1174,7 +1187,8 @@ const styles = StyleSheet.create({
   summaryLabel: { color: '#666', fontSize: 12 },
 
   actionsRow: { padding: 16, gap: 10 },
-  primaryBtn: { backgroundColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
+  primaryGradient: { borderRadius: 12, overflow: 'hidden' },
+  primaryBtn: { backgroundColor: 'transparent', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
   primaryBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   secondaryBtn: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#FFA500', borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 },
   secondaryBtnText: { color: '#FFA500', fontWeight: 'bold', fontSize: 16 },

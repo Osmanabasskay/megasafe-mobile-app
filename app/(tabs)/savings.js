@@ -36,6 +36,7 @@ import {
   TrendingUp
 } from 'lucide-react-native';
 import CalendarPicker from '../../components/CalendarPicker';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Main Savings Component
 export default function SavingsScreen() {
@@ -731,34 +732,36 @@ export default function SavingsScreen() {
           
           {/* Summary Cards */}
           <View style={styles.summaryContainer}>
-            <View style={styles.summaryCard}>
+            <LinearGradient colors={["#fff2e0", "#ffd8a8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
               <PiggyBank color="#FFA500" size={24} />
               <Text style={styles.summaryAmount}>{formatCurrency(totalSaved)}</Text>
               <Text style={styles.summaryLabel}>Total Saved</Text>
-            </View>
+            </LinearGradient>
             
-            <View style={styles.summaryCard}>
+            <LinearGradient colors={["#e6f7ff", "#c7ecff"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
               <Target color="#5CCEF4" size={24} />
               <Text style={styles.summaryAmount}>{savingsGoals.length}</Text>
               <Text style={styles.summaryLabel}>Active Goals</Text>
-            </View>
+            </LinearGradient>
             
-            <View style={styles.summaryCard}>
+            <LinearGradient colors={["#e8f7ee", "#c9f0d5"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCard}>
               <TrendingUp color="#4CAF50" size={24} />
               <Text style={styles.summaryAmount}>{completedGoals}</Text>
               <Text style={styles.summaryLabel}>Completed</Text>
-            </View>
+            </LinearGradient>
           </View>
           
           {/* Create Goal Button */}
           <View style={styles.actionContainer}>
-            <TouchableOpacity
-              style={styles.createGoalButton}
-              onPress={() => setCurrentScreen('create')}
-            >
-              <Plus color="#fff" size={20} />
-              <Text style={styles.createGoalButtonText}>Create New Goal</Text>
-            </TouchableOpacity>
+            <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.createGoalGradient}>
+              <TouchableOpacity
+                style={styles.createGoalButton}
+                onPress={() => setCurrentScreen('create')}
+              >
+                <Plus color="#fff" size={20} />
+                <Text style={styles.createGoalButtonText}>Create New Goal</Text>
+              </TouchableOpacity>
+            </LinearGradient>
           </View>
           
           {/* Savings Goals List */}
@@ -1084,13 +1087,15 @@ export default function SavingsScreen() {
           {/* Action Button */}
           {!isCompleted && (
             <View style={styles.actionContainer}>
-              <TouchableOpacity
-                style={styles.addMoneyButton}
-                onPress={() => setShowAddMoneyModal(true)}
-              >
-                <Plus color="#fff" size={20} />
-                <Text style={styles.addMoneyButtonText}>Add Money</Text>
-              </TouchableOpacity>
+              <LinearGradient colors={["#22c55e", "#16a34a"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.addMoneyGradient}>
+                <TouchableOpacity
+                  style={styles.addMoneyButton}
+                  onPress={() => setShowAddMoneyModal(true)}
+                >
+                  <Plus color="#fff" size={20} />
+                  <Text style={styles.addMoneyButtonText}>Add Money</Text>
+                </TouchableOpacity>
+              </LinearGradient>
             </View>
           )}
         </ScrollView>
@@ -1226,8 +1231,12 @@ const styles = StyleSheet.create({
   actionContainer: {
     padding: 20,
   },
+  createGoalGradient: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   createGoalButton: {
-    backgroundColor: '#FFA500',
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: 15,
     flexDirection: 'row',
@@ -1593,8 +1602,12 @@ const styles = StyleSheet.create({
   },
   
   // Add money button styles
+  addMoneyGradient: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   addMoneyButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: 15,
     flexDirection: 'row',
