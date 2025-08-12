@@ -13,6 +13,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Share,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -1391,6 +1392,23 @@ export default function GroupsScreen() {
               </View>
             ) : null}
 
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 16, marginTop: 12 }} contentContainerStyle={{ gap: 10 }}>
+              <TouchableOpacity style={[styles.detailButton, { flexDirection: 'row', gap: 8, paddingHorizontal: 14 }]} onPress={() => { setPaymentAmount(String(g.amount || '')); setPaymentForMemberId(activeRecipientId); const canManual = !!activeAssignment && activeAssignment.collectorId === currentUser.id; setPaymentProvider(canManual ? 'Manual Collection' : 'Orange Money'); setShowPaymentModal(true); }} testID="payContributionBtn">
+                <CreditCard color="#FFA500" size={18} />
+                <Text style={styles.detailButtonText}>Pay Contribution</Text>
+              </TouchableOpacity>
+              {isAdmin && (!!currentRound && !currentRound.finalized) ? (
+                <TouchableOpacity style={[styles.detailButton, { paddingHorizontal: 14 }]} onPress={() => finalizeRound(g.id)} testID="finalizeRoundBtnInline">
+                  <Text style={styles.detailButtonText}>Finalize Round</Text>
+                </TouchableOpacity>
+              ) : null}
+              {isAdmin ? (
+                <TouchableOpacity style={[styles.detailButton, { paddingHorizontal: 14 }]} onPress={() => { setAssignCollectorId(currentUser.id); setAssignIdImage(''); setAssignMembersMap({}); setShowAssignCollectorModal(true); }} testID="assignCollectorInline">
+                  <Text style={styles.detailButtonText}>{activeAssignment ? 'Reassign Collector' : 'Assign Collector'}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </ScrollView>
+
             <View style={[styles.groupCard, { marginTop: 12 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, justifyContent: 'space-between' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1596,43 +1614,61 @@ export default function GroupsScreen() {
           <View style={[styles.groupCard, { marginTop: 12 }]}>
             <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Admin Tools</Text>
             <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={() => { setShowAddMemberModal(true); }} testID="openAddMember">
-                <Text style={[styles.createButtonText, styles.detailButtonText]}>Add Member Manually</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={async () => {
-                try {
-                  const raw = await AsyncStorage.getItem('myContacts');
-                  const list = raw ? JSON.parse(raw) : [];
-                  setContacts(Array.isArray(list) ? list : []);
-                  setSelectedContactsMap({});
-                  setShowContactPickerModal(true);
-                } catch (e) { console.log('open contacts', e); }
-              }} testID="openContactPicker">
+              <TouchableOpacity
+                style={[styles.createButton, styles.detailButton, { flex: 1 }]}
+                onPress={async () => {
+                  try {
+                    if (Platform.OS !== 'web') {
+                      try {
+                        const Contacts = await import('expo-contacts');
+                        const perm = await Contacts.requestPermissionsAsync();
+                        if (perm.status === 'granted') {
+                          const res = await Contacts.getContactsAsync({ fields: [Contacts.Fields.PhoneNumbers] });
+                          const mapped = (res.data || []).flatMap((c) => {
+                            const name = c.name || 'Unknown';
+                            const phones = (c.phoneNumbers || []).map((p) => (p.number || '').replace(/\s+/g, ''));
+                            return phones.filter(Boolean).map((phone) => ({ id: phone, name, phone }));
+                          });
+                          setContacts(mapped);
+                        } else {
+                          Alert.alert('Permission required', 'Please allow contacts access to add members.');
+                          const raw = await AsyncStorage.getItem('myContacts');
+                          setContacts(raw ? JSON.parse(raw) : []);
+                        }
+                      } catch (e) {
+                        console.log('device contacts error', e);
+                        const raw = await AsyncStorage.getItem('myContacts');
+                        setContacts(raw ? JSON.parse(raw) : []);
+                      }
+                    } else {
+                      const raw = await AsyncStorage.getItem('myContacts');
+                      setContacts(raw ? JSON.parse(raw) : []);
+                    }
+                    setSelectedContactsMap({});
+                    setShowContactPickerModal(true);
+                  } catch (e) { console.log('open contacts', e); }
+                }}
+                testID="openContactPicker"
+              >
                 <Text style={[styles.createButtonText, styles.detailButtonText]}>Add From Contacts</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.createButton, styles.detailButton, { flex: 1 }]} onPress={() => {
-                setAssignCollectorId(currentUser.id);
-                setAssignIdImage('');
-                setAssignMembersMap({});
-                setShowAssignCollectorModal(true);
-              }} testID="openAssignCollector">
-                <Text style={[styles.createButtonText, styles.detailButtonText]}>{activeAssignment ? 'Reassign Collector' : 'Assign Collector'}</Text>
-              </TouchableOpacity>
-              {activeAssignment ? (
-                <TouchableOpacity style={[styles.rejectBtn, { flex: 1 }]} onPress={async () => {
+
+              <TouchableOpacity
+                style={[styles.createButton, styles.detailButton, { flex: 1 }]}
+                onPress={async () => {
                   try {
-                    const updated = availableGroups.map((gg)=>{
-                      if (gg.id !== g.id) return gg;
-                      const next = (gg.collectorAssignments||[]).map(a => a.id === activeAssignment.id ? { ...a, active: false, endedAt: new Date().toISOString() } : a);
-                      return { ...gg, collectorAssignments: next };
-                    });
-                    await saveGroups(updated);
-                    Alert.alert('Ended', 'Collector assignment ended');
-                  } catch (e) { console.log('end assignment', e); }
-                }} testID="endAssignment">
-                  <Text style={styles.rejectBtnText}>End Assignment</Text>
-                </TouchableOpacity>
-              ) : null}
+                    const msg = `Join our Osusu group "${g.name}" in the app. Search and request to join.`;
+                    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
+                      await navigator.share({ title: 'Osusu Invite', text: msg });
+                    } else {
+                      await Share.share({ message: msg });
+                    }
+                  } catch (e) { console.log('share invite', e); }
+                }}
+                testID="sendInviteLink"
+              >
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>Send Invitation Link</Text>
+              </TouchableOpacity>
             </View>
           </View>
         ) : null}
