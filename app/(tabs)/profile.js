@@ -663,7 +663,6 @@ export default function ProfileScreen() {
         <SectionRow icon={<CircuitBoard color="#5CCEF4" size={20} />} title="Security Blockchain" onPress={() => setScreen('chain')} />
         <SectionRow icon={<Contact color="#5CCEF4" size={20} />} title="Next of Kin" onPress={() => setScreen('nok')} right={(nokName&&nokPhone)?<Check color="#4CAF50" size={18} />:null} />
         <SectionRow icon={<LinkIcon color="#FFA500" size={20} />} title="Linked Wallets & Banks" onPress={() => setScreen('linked')} />
-        <SectionRow icon={<CreditCard color="#FFA500" size={20} />} title="Your Payments" onPress={() => setScreen('payments')} />
         <SectionRow icon={<CreditCard color="#5CCEF4" size={20} />} title="Analytics & Reports" onPress={() => setScreen('reports')} />
         <SectionRow icon={<HelpCircle color="#5CCEF4" size={20} />} title="Offline Sync" onPress={() => setScreen('offline')} />
         <SectionRow icon={<HelpCircle color="#5CCEF4" size={20} />} title="Contact Us" onPress={() => setScreen('contact')} />
