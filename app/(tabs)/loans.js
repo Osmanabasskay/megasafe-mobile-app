@@ -61,8 +61,8 @@ export default function LoansScreen() {
   const [selectedOrg, setSelectedOrg] = useState(null);
 
   const [amount, setAmount] = useState('');
-  const [interest, setInterest] = useState('10');
-  const [term, setTerm] = useState('12');
+  const [interest, setInterest] = useState('');
+  const [term, setTerm] = useState('');
   const [purpose, setPurpose] = useState('');
   const [guarantorNin, setGuarantorNin] = useState('');
   const [guarantorIdUrl, setGuarantorIdUrl] = useState('');
@@ -195,17 +195,14 @@ export default function LoansScreen() {
 
   const requestLoan = useCallback(async () => {
     const a = parseFloat(amount);
-    const r = parseFloat(interest);
-    const m = parseInt(term);
     if (trustScore < 100) { Alert.alert('Not eligible', 'Complete your Trust to 100% to request a loan'); return; }
     if (isNaN(a) || a <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
     if (a > maxLoan) { Alert.alert('Limit', `Amount exceeds your limit of ${formatCurrency(maxLoan)}`); return; }
-    if (isNaN(r) || r < 0) { Alert.alert('Invalid', 'Enter a valid interest rate'); return; }
-    if (isNaN(m) || m <= 0) { Alert.alert('Invalid', 'Enter a valid term in months'); return; }
     if (!purpose.trim()) { Alert.alert('Required', 'Enter a purpose'); return; }
     const myAccount = loanAccounts.find((acc)=>acc.ownerId===userId && acc.type==='individual');
     if (!myAccount) { Alert.alert('Create Loan Account', 'Create an Individual Loan Account first (Loans → Loan Accounts)'); setView('accounts'); return; }
     if (!guarantorNin.trim()) { Alert.alert('Required', 'Enter Guarantor NIN'); return; }
+    if (!mobileMoney && (!linkedBanks || linkedBanks.length === 0)) { Alert.alert('Payment Method Needed', 'Add Mobile Money or Bank details in Profile before requesting.'); return; }
     try {
       setLoading(true);
       const loan = {
@@ -213,8 +210,8 @@ export default function LoansScreen() {
         borrowerId: userId,
         borrowerName: userData.name || 'You',
         amount: a,
-        interest: r,
-        term: m,
+        interest: null,
+        term: null,
         purpose: purpose.trim(),
         status: 'pending',
         createdAt: new Date().toISOString(),
@@ -226,9 +223,9 @@ export default function LoansScreen() {
       };
       const next = [...loans, loan];
       await saveLoans(next);
-      await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a, interest: r, term: m });
-      Alert.alert('Requested', 'Loan request submitted. An organization admin can approve.');
-      setAmount(''); setInterest('10'); setTerm('12'); setPurpose(''); setGuarantorNin(''); setGuarantorIdUrl('');
+      await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a });
+      Alert.alert('Requested', 'Loan request submitted. Lender will set interest and duration during approval.');
+      setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdUrl('');
       setView('my');
     } catch (e) {
       console.log('[Loans] request error', e);
@@ -236,14 +233,18 @@ export default function LoansScreen() {
     } finally {
       setLoading(false);
     }
-  }, [amount, interest, term, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdUrl, loanAccounts, mobileMoney, linkedBanks]);
+  }, [amount, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdUrl, loanAccounts, mobileMoney, linkedBanks]);
 
-  const approveLoan = useCallback(async (org, loan) => {
+  const approveLoan = useCallback(async (org, loan, params) => {
     try {
       setLoading(true);
-      const next = loans.map((l) => l.id === loan.id ? { ...l, status: 'approved', orgId: org.id, approvedAt: new Date().toISOString() } : l);
+      const rate = parseFloat(params?.interest ?? '');
+      const months = parseInt(params?.term ?? '');
+      if (isNaN(rate) || rate < 0) { Alert.alert('Invalid', 'Enter a valid interest %'); return; }
+      if (isNaN(months) || months <= 0) { Alert.alert('Invalid', 'Enter a valid term in months'); return; }
+      const next = loans.map((l) => l.id === loan.id ? { ...l, status: 'approved', orgId: org.id, interest: rate, term: months, approvedAt: new Date().toISOString() } : l);
       await saveLoans(next);
-      await addLedger('loan-approved', { loanId: loan.id, orgId: org.id });
+      await addLedger('loan-approved', { loanId: loan.id, orgId: org.id, interest: rate, term: months });
       Alert.alert('Approved', 'Loan approved. Proceed to disburse.');
     } catch (e) {
       console.log('[Loans] approve error', e);
@@ -256,10 +257,11 @@ export default function LoansScreen() {
   const disburseLoan = useCallback(async (org, loan) => {
     try {
       setLoading(true);
-      const next = loans.map((l) => l.id === loan.id ? { ...l, status: 'active', disbursedAt: new Date().toISOString() } : l);
+      const destination = loan.payerDestinations?.mobileMoney?.number ? { method: 'mm', number: loan.payerDestinations.mobileMoney.number } : loan.payerDestinations?.bank ? { method: 'bank', bankId: loan.payerDestinations.bank.id, number: loan.payerDestinations.bank.number } : { method: 'unknown' };
+      const next = loans.map((l) => l.id === loan.id ? { ...l, status: 'active', disbursedAt: new Date().toISOString(), disbursement: { amount: loan.amount, ...destination, timestamp: new Date().toISOString() } } : l);
       await saveLoans(next);
-      await addLedger('loan-disbursed', { loanId: loan.id, orgId: org.id, amount: loan.amount, bankId: org.bankId || '', ts: Date.now() });
-      Alert.alert('Disbursed', 'Funds disbursed and recorded on-chain.');
+      await addLedger('loan-disbursed', { loanId: loan.id, orgId: org.id, amount: loan.amount, destination, ts: Date.now() });
+      Alert.alert('Disbursed', 'Funds disbursed to borrower destination.');
     } catch (e) {
       console.log('[Loans] disburse error', e);
       Alert.alert('Error', 'Failed to disburse');
@@ -431,6 +433,7 @@ export default function LoansScreen() {
         <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>Limit: {formatCurrency(maxLoan)} • Trust: {trustScore}%</Text>
+            <Text style={[styles.smallMuted, { marginTop: 4 }]}>You only request the amount. Interest and duration are set by the lender.</Text>
           </View>
 
           <View style={styles.card}>
@@ -447,6 +450,7 @@ export default function LoansScreen() {
                 </View>
               );
             })()}
+            <Text style={[styles.muted, { marginTop: 8 }]}>Interest rate and duration will be set by the Lender during approval.</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -455,20 +459,7 @@ export default function LoansScreen() {
               <TextInput value={amount} onChangeText={(t)=>setAmount(t.replace(/[^0-9.]/g,''))} placeholder="0.00" keyboardType="numeric" style={styles.input} testID="amountInput" />
             </View>
           </View>
-          <View style={styles.row2}>
-            <View style={[styles.inputGroup, styles.flex1, { marginRight: 8 }]}>
-              <Text style={styles.inputLabel}>Interest (%)</Text>
-              <View style={styles.inputBox}>
-                <TextInput value={interest} onChangeText={(t)=>setInterest(t.replace(/[^0-9.]/g,''))} placeholder="10" keyboardType="numeric" style={styles.input} testID="interestInput" />
-              </View>
-            </View>
-            <View style={[styles.inputGroup, styles.flex1, { marginLeft: 8 }]}>
-              <Text style={styles.inputLabel}>Term (months)</Text>
-              <View style={styles.inputBox}>
-                <TextInput value={term} onChangeText={(t)=>setTerm(t.replace(/[^0-9]/g,''))} placeholder="12" keyboardType="number-pad" style={styles.input} testID="termInput" />
-              </View>
-            </View>
-          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Purpose</Text>
             <View style={styles.inputBox}>
@@ -515,7 +506,7 @@ export default function LoansScreen() {
             <Text style={styles.badgeText}>{loan.status}</Text>
           </View>
         </View>
-        <View style={styles.cardRow}><CreditCard color="#666" size={16} /><Text style={styles.cardText}>{formatCurrency(loan.amount)} • {loan.interest}% • {loan.term} mo</Text></View>
+        <View style={styles.cardRow}><CreditCard color="#666" size={16} /><Text style={styles.cardText}>{formatCurrency(loan.amount)} • {loan.interest != null ? `${loan.interest}%` : 'interest —'} • {loan.term != null ? `${loan.term} mo` : 'term —'}</Text></View>
         <View style={styles.cardRow}><Clock color="#666" size={16} /><Text style={styles.cardText}>Outstanding: {formatCurrency(totals.outstanding)}</Text></View>
       </TouchableOpacity>
     );
@@ -555,7 +546,7 @@ export default function LoansScreen() {
                 <Text style={styles.badgeText}>{selectedLoan.status}</Text>
               </View>
             </View>
-            <View style={styles.cardRow}><Percent color="#666" size={16} /><Text style={styles.cardText}>{formatCurrency(selectedLoan.amount)} • {selectedLoan.interest}% • {selectedLoan.term} months</Text></View>
+            <View style={styles.cardRow}><Percent color="#666" size={16} /><Text style={styles.cardText}>{formatCurrency(selectedLoan.amount)} • {selectedLoan.interest != null ? `${selectedLoan.interest}%` : 'interest —'} • {selectedLoan.term != null ? `${selectedLoan.term} months` : 'term —'}</Text></View>
             <View style={styles.cardRow}><Building2 color="#666" size={16} /><Text style={styles.cardText}>Organization: {org ? org.name : '—'}</Text></View>
             <View style={styles.cardRow}><Calendar color="#666" size={16} /><Text style={styles.cardText}>Created: {new Date(selectedLoan.createdAt).toLocaleDateString()}</Text></View>
             <View style={[styles.kvRow]}>
@@ -647,6 +638,7 @@ export default function LoansScreen() {
     );
   };
 
+  const [approveParams, setApproveParams] = useState({});
   const myAdminOrgs = useMemo(() => orgs.filter((o) => o.ownerId === userId), [orgs, userId]);
   const memberOrgs = useMemo(() => orgs.filter((o) => (o.members || []).includes(userId)), [orgs, userId]);
 
@@ -787,16 +779,44 @@ export default function LoansScreen() {
               <Text style={styles.muted}>No pending requests</Text>
             ) : (
               pendingLoans.map((l) => (
-                <View key={l.id} style={styles.listRowBetween}>
+                <View key={l.id} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
                   <View style={styles.rowLeft}>
                     <HandCoins color="#FFA500" size={18} />
                     <View>
-                      <Text style={styles.listText}>{l.borrowerName} • {formatCurrency(l.amount)} • {l.interest}% / {l.term}m</Text>
+                      <Text style={styles.listText}>{l.borrowerName} • {formatCurrency(l.amount)}</Text>
                       <Text style={styles.smallMuted}>#{l.id.slice(-6)}</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity style={styles.approveBtn} onPress={() => approveLoan(selectedOrg, l)} testID={`approve-${l.id}`}>
+                  <View style={[styles.row2, { marginTop: 8, paddingHorizontal: 0 }]}> 
+                    <View style={[styles.inputGroup, styles.flex1, { marginRight: 8 }]}> 
+                      <Text style={styles.inputLabel}>Interest (%)</Text>
+                      <View style={styles.inputBox}>
+                        <TextInput
+                          value={approveParams[l.id]?.interest ?? ''}
+                          onChangeText={(t)=>setApproveParams((p)=>({ ...p, [l.id]: { ...(p[l.id]||{}), interest: t.replace(/[^0-9.]/g,'') } }))}
+                          placeholder="10"
+                          keyboardType="numeric"
+                          style={styles.input}
+                          testID={`setInterest-${l.id}`}
+                        />
+                      </View>
+                    </View>
+                    <View style={[styles.inputGroup, styles.flex1, { marginLeft: 8 }]}> 
+                      <Text style={styles.inputLabel}>Term (months)</Text>
+                      <View style={styles.inputBox}>
+                        <TextInput
+                          value={approveParams[l.id]?.term ?? ''}
+                          onChangeText={(t)=>setApproveParams((p)=>({ ...p, [l.id]: { ...(p[l.id]||{}), term: t.replace(/[^0-9]/g,'') } }))}
+                          placeholder="12"
+                          keyboardType="number-pad"
+                          style={styles.input}
+                          testID={`setTerm-${l.id}`}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end', paddingHorizontal: 16 }}>
+                    <TouchableOpacity style={styles.approveBtn} onPress={() => approveLoan(selectedOrg, l, approveParams[l.id])} testID={`approve-${l.id}`}>
                       <Check color="#fff" size={14} />
                       <Text style={styles.approveBtnText}>Approve</Text>
                     </TouchableOpacity>
