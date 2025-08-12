@@ -1570,9 +1570,32 @@ export default function GroupsScreen() {
             <Text style={styles.detailText}>No alerts yet.</Text>
           ) : (
             (g.notifications||[]).slice().reverse().slice(0,5).map((n)=> (
-              <View key={`n-${n.id}`} style={styles.detailRow}>
-                <Clock color="#FFA500" size={14} />
-                <Text style={styles.detailText}>{n.message}</Text>
+              <View key={`n-${n.id}`} style={[styles.detailRow, { justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
+                  <Clock color="#FFA500" size={14} />
+                  <Text style={styles.detailText}>{n.message}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={async () => {
+                    try {
+                      const updated = availableGroups.map((gg) => {
+                        if (gg.id !== g.id) return gg;
+                        const next = (gg.notifications || []).filter((x) => x.id !== n.id);
+                        return { ...gg, notifications: next };
+                      });
+                      await saveGroups(updated);
+                    } catch (e) {
+                      console.log('clear alert error', e);
+                      Alert.alert('Error', 'Failed to clear alert');
+                    }
+                  }}
+                  style={styles.clearChip}
+                  testID={`clearAlert-${n.id}`}
+                  accessibilityLabel={`Clear alert ${n.id}`}
+                >
+                  <X color="#fff" size={12} />
+                  <Text style={styles.clearChipText}>Clear</Text>
+                </TouchableOpacity>
               </View>
             ))
           )}
@@ -2029,4 +2052,6 @@ const styles = StyleSheet.create({
   quickChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: '#FFA500', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
   quickChipText: { color: '#FFA500', fontWeight: '600', fontFamily: 'Inter' },
   stepperBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#FFA500', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  clearChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#4F5D75', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  clearChipText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'Montserrat' },
 });
