@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
-import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check } from 'lucide-react-native';
+import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check, Smile, MapPin, User as UserIcon, FileText, Headphones, Calendar, BarChart3 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
@@ -19,6 +19,7 @@ export default function ChatRoom() {
   const soundRef = useRef(null);
   const listRef = useRef(null);
   const [pendingAudio, setPendingAudio] = useState(null);
+  const [showAttach, setShowAttach] = useState(false);
   const waveAnim = useMemo(() => Array.from({ length: 8 }, () => new Animated.Value(0)), []);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export default function ChatRoom() {
       if (asset?.uri) {
         await appendMessage({ id: Date.now().toString(), type: 'image', uri: asset.uri, ts: Date.now(), sender: 'you' });
       }
+      setShowAttach(false);
     } catch (e) { console.log('pickImage error', e); }
   };
 
@@ -83,6 +85,7 @@ export default function ChatRoom() {
       if (asset?.uri) {
         await appendMessage({ id: Date.now().toString(), type: 'image', uri: asset.uri, ts: Date.now(), sender: 'you' });
       }
+      setShowAttach(false);
     } catch (e) { console.log('capture error', e); }
   };
 
@@ -94,6 +97,7 @@ export default function ChatRoom() {
       if (file?.uri) {
         await appendMessage({ id: Date.now().toString(), type: 'file', uri: file.uri, name: file.name, mime: file.mimeType, ts: Date.now(), sender: 'you' });
       }
+      setShowAttach(false);
     } catch (e) { console.log('doc pick error', e); }
   };
 
@@ -200,6 +204,45 @@ export default function ChatRoom() {
     setPendingAudio(null);
   };
 
+  const pickAudio = async () => {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({ type: 'audio/*' });
+      if (res.canceled) return;
+      const file = res.assets?.[0];
+      if (file?.uri) {
+        await appendMessage({ id: Date.now().toString(), type: 'file', uri: file.uri, name: file.name || 'audio', mime: file.mimeType || 'audio/*', ts: Date.now(), sender: 'you' });
+      }
+      setShowAttach(false);
+    } catch (e) { console.log('audio pick err', e); }
+  };
+
+  const openLocation = async () => {
+    try {
+      if (Platform.OS === 'web') { Alert.alert('Not available', 'Location sending is not supported on web.'); return; }
+      const { status } = await (await import('expo-location')).requestForegroundPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission required', 'Allow location access.'); return; }
+      const { coords } = await (await import('expo-location')).getCurrentPositionAsync({});
+      const mapsUrl = Platform.select({ ios: `http://maps.apple.com/?ll=${coords.latitude},${coords.longitude}`, default: `geo:${coords.latitude},${coords.longitude}` });
+      await appendMessage({ id: Date.now().toString(), type: 'text', text: `Location: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}\n${mapsUrl}` , ts: Date.now(), sender: 'you' });
+      setShowAttach(false);
+    } catch (e) { console.log('loc err', e); }
+  };
+
+  const pickContact = async () => {
+    try {
+      if (Platform.OS === 'web') { Alert.alert('Not available', 'Contacts are not supported on web.'); return; }
+      const Contacts = await import('expo-contacts');
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission required', 'Allow contacts access.'); return; }
+      const { data } = await Contacts.getContactsAsync({ pageSize: 1 });
+      if (data?.[0]) {
+        const c = data[0];
+        await appendMessage({ id: Date.now().toString(), type: 'text', text: `Contact: ${c.name}${c.phoneNumbers?.[0]?.number? ' | '+c.phoneNumbers[0].number : ''}`, ts: Date.now(), sender: 'you' });
+      }
+      setShowAttach(false);
+    } catch (e) { console.log('contact err', e); }
+  };
+
   const renderItem = ({ item }) => {
     const isMine = item.sender === 'you';
     if (item.type === 'image') {
@@ -282,23 +325,68 @@ export default function ChatRoom() {
             </View>
           </View>
         )}
+
+        {showAttach && (
+          <View style={styles.attachSheet} testID="attachSheet">
+            <View style={styles.attachGrid}>
+              <TouchableOpacity style={styles.attachTile} onPress={pickImageFromLibrary} testID="attGallery">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#E8F0FE' }]}><ImageIcon color="#1A73E8" size={22} /></View>
+                <Text style={styles.tileLabel}>Gallery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={captureWithCamera} testID="attCamera">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#FFE4EF' }]}><CameraIcon color="#FF2D7A" size={22} /></View>
+                <Text style={styles.tileLabel}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={openLocation} testID="attLocation">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#E6FFF4' }]}><MapPin color="#10B981" size={22} /></View>
+                <Text style={styles.tileLabel}>Location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={pickContact} testID="attContact">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#EAF2FF' }]}><UserIcon color="#2563EB" size={22} /></View>
+                <Text style={styles.tileLabel}>Contact</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={pickDocument} testID="attDocument">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#F1E9FF' }]}><FileText color="#7C3AED" size={22} /></View>
+                <Text style={styles.tileLabel}>Document</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={pickAudio} testID="attAudio">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#FFF1E6' }]}><Headphones color="#F97316" size={22} /></View>
+                <Text style={styles.tileLabel}>Audio</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={() => { Alert.alert('Poll', 'Create a poll (stub)'); setShowAttach(false); }} testID="attPoll">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#FFF8E6' }]}><BarChart3 color="#F59E0B" size={22} /></View>
+                <Text style={styles.tileLabel}>Poll</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.attachTile} onPress={() => { Alert.alert('Event', 'Create an event (stub)'); setShowAttach(false); }} testID="attEvent">
+                <View style={[styles.tileIconWrap, { backgroundColor: '#FFEAF0' }]}><Calendar color="#EC4899" size={22} /></View>
+                <Text style={styles.tileLabel}>Event</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <View style={styles.inputRow}>
-          <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={[styles.iconBtn, isRecording && styles.recActive]} testID="micBtn">
-            <Mic color={isRecording?'#fff':'#555'} size={18} />
-          </TouchableOpacity>
-          <TextInput style={styles.input} value={input} onChangeText={setInput} placeholder="Message" testID="msgInput" />
-          <TouchableOpacity onPress={captureWithCamera} style={styles.iconBtn} testID="cameraBtn">
-            <CameraIcon color="#555" size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={pickImageFromLibrary} style={styles.iconBtn} testID="imagePickerBtn">
-            <ImageIcon color="#555" size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={pickDocument} style={styles.iconBtn} testID="docPickerBtn">
-            <Paperclip color="#555" size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.sendBtn} onPress={send} testID="sendBtn">
-            <Send color="#fff" size={18} />
-          </TouchableOpacity>
+          <View style={styles.msgBar}>
+            <TouchableOpacity onPress={() => {}} style={styles.msgBarIcon} testID="emojiBtn">
+              <Smile color="#6B7280" size={20} />
+            </TouchableOpacity>
+            <TextInput style={styles.msgInput} value={input} onChangeText={setInput} placeholder="Message" placeholderTextColor="#9AA0A6" testID="msgInput" />
+            <TouchableOpacity onPress={() => setShowAttach((v)=>!v)} style={styles.msgBarIcon} testID="clipBtn">
+              <Paperclip color="#6B7280" size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={captureWithCamera} style={[styles.msgBarIcon, { marginRight: 6 }]} testID="cameraBtn">
+              <CameraIcon color="#6B7280" size={20} />
+            </TouchableOpacity>
+          </View>
+          {input.trim().length > 0 ? (
+            <TouchableOpacity style={styles.micFab} onPress={send} testID="sendFab">
+              <Send color="#fff" size={20} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={isRecording ? stopRecording : startRecording} style={styles.micFab} testID="micFab">
+              <Mic color="#fff" size={20} />
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -319,11 +407,21 @@ const styles = StyleSheet.create({
   time: { fontSize: 10, marginTop: 4 },
   timeMine: { color: '#fff', opacity: 0.85 },
   timeTheirs: { color: '#6b7280' },
-  inputRow: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, borderTopColor: '#eee', backgroundColor: '#fff' },
+
+  attachSheet: { backgroundColor: '#fff', marginHorizontal: 10, marginBottom: 8, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#eee' },
+  attachGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  attachTile: { width: '23%', alignItems: 'center', marginBottom: 18 },
+  tileIconWrap: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  tileLabel: { marginTop: 8, color: '#6B7280', fontWeight: '600' },
+
+  inputRow: { flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: 'transparent' },
+  msgBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 24, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 8, height: 48 },
+  msgBarIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  msgInput: { flex: 1, height: 40, color: '#111', paddingHorizontal: 8 },
+  micFab: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', marginLeft: 10 },
+
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 6, backgroundColor: '#F3F4F6' },
   recActive: { backgroundColor: '#ef4444' },
-  input: { flex: 1, height: 44, borderWidth: 1, borderColor: '#ddd', borderRadius: 22, paddingHorizontal: 14, marginRight: 8 },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFA500', alignItems: 'center', justifyContent: 'center' },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   audioRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   image: { width: 220, height: 220, borderRadius: 12, backgroundColor: '#e5e7eb' },
