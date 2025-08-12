@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  SafeAreaView,
   FlatList,
   Modal,
   ProgressViewIOS,
@@ -38,8 +37,12 @@ import {
 import CalendarPicker from '../../components/CalendarPicker';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
 // Main Savings Component
 export default function SavingsScreen() {
+  const insets = useSafeAreaInsets();
+
   // Navigation state to track current screen
   const [currentScreen, setCurrentScreen] = useState('home'); // home, create, details
   
