@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,7 +31,6 @@ import {
   ArrowLeft,
   Download,
   CreditCard,
-  Banknote,
 } from 'lucide-react-native';
 import CalendarPicker from '../../components/CalendarPicker';
 
@@ -41,6 +40,17 @@ export default function LoansScreen() {
 
   const [userData, setUserData] = useState({ name: '', phone: '' });
   const [loans, setLoans] = useState([]);
+  const [loanAccounts, setLoanAccounts] = useState([]);
+  const [accountType, setAccountType] = useState('individual');
+  const [accountForm, setAccountForm] = useState({
+    fullName: '', nin: '', idFrontUrl: '', idBackUrl: '', passportUrl: '', address: '', phone: '', email: '',
+    institutionName: '', headOfficeAddress: '', ceoName: '', ceoNin: '', ceoIdFrontUrl: '', ceoIdBackUrl: '', ceoPassportUrl: '',
+    branchAddress: '', branchManagerName: '', branchManagerNin: '', branchManagerIdFrontUrl: '', branchManagerIdBackUrl: '', branchManagerPassportUrl: '',
+    certificate1Url: '', certificate2Url: '',
+    orgName: '', officeAddress: '', leaderName: '', leaderNin: '', leaderIdFrontUrl: '', leaderIdBackUrl: '', leaderPassportUrl: '',
+    creatorRole: '', creatorName: '', creatorNin: '', creatorIdFrontUrl: '', creatorIdBackUrl: '', creatorPassportUrl: '',
+    orgKind: 'NGO',
+  });
   const [orgs, setOrgs] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -54,6 +64,8 @@ export default function LoansScreen() {
   const [interest, setInterest] = useState('10');
   const [term, setTerm] = useState('12');
   const [purpose, setPurpose] = useState('');
+  const [guarantorNin, setGuarantorNin] = useState('');
+  const [guarantorIdUrl, setGuarantorIdUrl] = useState('');
 
   const [showRepayModal, setShowRepayModal] = useState(false);
   const [repayAmount, setRepayAmount] = useState('');
@@ -68,7 +80,7 @@ export default function LoansScreen() {
     (async () => {
       setLoading(true);
       try {
-        const [ud, ls, os, lg, gr, lb, mm] = await Promise.all([
+        const [ud, ls, os, lg, gr, lb, mm, accs] = await Promise.all([
           AsyncStorage.getItem('userData'),
           AsyncStorage.getItem('loansData'),
           AsyncStorage.getItem('loanOrgs'),
@@ -76,6 +88,7 @@ export default function LoansScreen() {
           AsyncStorage.getItem('availableGroups'),
           AsyncStorage.getItem('linkedBanks'),
           AsyncStorage.getItem('mobileMoney'),
+          AsyncStorage.getItem('loanAccounts'),
         ]);
         if (ud) setUserData(JSON.parse(ud));
         if (ls) setLoans(JSON.parse(ls));
@@ -84,6 +97,7 @@ export default function LoansScreen() {
         if (gr) setGroups(JSON.parse(gr));
         if (lb) setLinkedBanks(JSON.parse(lb));
         if (mm) setMobileMoney(JSON.parse(mm));
+        if (accs) setLoanAccounts(JSON.parse(accs));
       } catch (e) {
         console.log('[Loans] load error', e);
         Alert.alert('Error', 'Failed to load loans data');
@@ -112,7 +126,7 @@ export default function LoansScreen() {
       if (linkedBanks && linkedBanks.length > 0) score += 10;
     } catch {}
     try {
-      const docsStr = AsyncStorage.getItem('identityDocs');
+      const _ = AsyncStorage.getItem('identityDocs');
     } catch {}
     score = Math.min(100, Math.max(20, score + 30));
     return score;
@@ -144,6 +158,11 @@ export default function LoansScreen() {
   const saveLedger = useCallback(async (arr) => {
     setLedger(arr);
     await AsyncStorage.setItem('loanLedger', JSON.stringify(arr));
+  }, []);
+
+  const saveAccounts = useCallback(async (arr) => {
+    setLoanAccounts(arr);
+    await AsyncStorage.setItem('loanAccounts', JSON.stringify(arr));
   }, []);
 
   const calcTotals = useCallback((loan) => {
@@ -178,11 +197,15 @@ export default function LoansScreen() {
     const a = parseFloat(amount);
     const r = parseFloat(interest);
     const m = parseInt(term);
+    if (trustScore < 100) { Alert.alert('Not eligible', 'Complete your Trust to 100% to request a loan'); return; }
     if (isNaN(a) || a <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
     if (a > maxLoan) { Alert.alert('Limit', `Amount exceeds your limit of ${formatCurrency(maxLoan)}`); return; }
     if (isNaN(r) || r < 0) { Alert.alert('Invalid', 'Enter a valid interest rate'); return; }
     if (isNaN(m) || m <= 0) { Alert.alert('Invalid', 'Enter a valid term in months'); return; }
     if (!purpose.trim()) { Alert.alert('Required', 'Enter a purpose'); return; }
+    const myAccount = loanAccounts.find((acc)=>acc.ownerId===userId && acc.type==='individual');
+    if (!myAccount) { Alert.alert('Create Loan Account', 'Create an Individual Loan Account first (Loans → Loan Accounts)'); setView('accounts'); return; }
+    if (!guarantorNin.trim()) { Alert.alert('Required', 'Enter Guarantor NIN'); return; }
     try {
       setLoading(true);
       const loan = {
@@ -197,12 +220,15 @@ export default function LoansScreen() {
         createdAt: new Date().toISOString(),
         orgId: '',
         repayments: [],
+        guarantor: { nin: guarantorNin.trim(), idUrl: guarantorIdUrl.trim() },
+        payerDestinations: { mobileMoney: mobileMoney || null, bank: linkedBanks[0] || null },
+        borrowerAccountSnapshot: myAccount,
       };
       const next = [...loans, loan];
       await saveLoans(next);
       await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a, interest: r, term: m });
       Alert.alert('Requested', 'Loan request submitted. An organization admin can approve.');
-      setAmount(''); setInterest('10'); setTerm('12'); setPurpose('');
+      setAmount(''); setInterest('10'); setTerm('12'); setPurpose(''); setGuarantorNin(''); setGuarantorIdUrl('');
       setView('my');
     } catch (e) {
       console.log('[Loans] request error', e);
@@ -210,7 +236,7 @@ export default function LoansScreen() {
     } finally {
       setLoading(false);
     }
-  }, [amount, interest, term, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency]);
+  }, [amount, interest, term, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdUrl, loanAccounts, mobileMoney, linkedBanks]);
 
   const approveLoan = useCallback(async (org, loan) => {
     try {
@@ -232,7 +258,7 @@ export default function LoansScreen() {
       setLoading(true);
       const next = loans.map((l) => l.id === loan.id ? { ...l, status: 'active', disbursedAt: new Date().toISOString() } : l);
       await saveLoans(next);
-      await addLedger('loan-disbursed', { loanId: loan.id, orgId: org.id, amount: loan.amount, bankId: org.bankId || '' });
+      await addLedger('loan-disbursed', { loanId: loan.id, orgId: org.id, amount: loan.amount, bankId: org.bankId || '', ts: Date.now() });
       Alert.alert('Disbursed', 'Funds disbursed and recorded on-chain.');
     } catch (e) {
       console.log('[Loans] disburse error', e);
@@ -332,6 +358,17 @@ export default function LoansScreen() {
     </View>
   );
 
+  const Terms = () => (
+    <View style={[styles.card, { marginTop: 12 }]}> 
+      <Text style={styles.sectionTitle}>Loan Terms & Conditions</Text>
+      <Text style={styles.muted}>• Eligibility requires Trust 100% and verified identity (NIN and ID/Passport).{"\n"}
+      • Providing false information leads to denial and potential suspension.{"\n"}
+      • Disbursement is sent to your linked Mobile Money or Bank details.{"\n"}
+      • Late or missed repayments may affect eligibility and organization rules.{"\n"}
+      • By proceeding you agree to these terms.</Text>
+    </View>
+  );
+
   const renderHome = () => (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll}>
@@ -371,6 +408,9 @@ export default function LoansScreen() {
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('orgs')} testID="orgsBtn">
             <Text style={styles.secondaryBtnText}>Organizations</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('accounts')} testID="accountsBtn">
+            <Text style={styles.secondaryBtnText}>Loan Accounts</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('ledger')} testID="ledgerBtn">
             <Text style={styles.secondaryBtnText}>Ledger</Text>
           </TouchableOpacity>
@@ -379,6 +419,7 @@ export default function LoansScreen() {
           <Percent color="#FFA500" size={18} />
           <Text style={styles.limitText}>Your current limit: {formatCurrency(maxLoan)}</Text>
         </View>
+        <Terms />
       </ScrollView>
     </SafeAreaView>
   );
@@ -391,6 +432,23 @@ export default function LoansScreen() {
           <View style={styles.infoCard}>
             <Text style={styles.infoText}>Limit: {formatCurrency(maxLoan)} • Trust: {trustScore}%</Text>
           </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Your Identified Details</Text>
+            {(() => {
+              const acc = loanAccounts.find((a)=>a.ownerId===userId && a.type==='individual');
+              if (!acc) return <Text style={styles.muted}>No Individual Loan Account yet. Create one in Accounts.</Text>;
+              return (
+                <View>
+                  <View style={styles.kvRow}><Text style={styles.kvLabel}>Full name</Text><Text style={styles.kvValue}>{acc.data.fullName}</Text></View>
+                  <View style={styles.kvRow}><Text style={styles.kvLabel}>NIN</Text><Text style={styles.kvValue}>{acc.data.nin}</Text></View>
+                  <View style={styles.kvRow}><Text style={styles.kvLabel}>Address</Text><Text style={styles.kvValue}>{acc.data.address}</Text></View>
+                  <View style={styles.kvRow}><Text style={styles.kvLabel}>Phone</Text><Text style={styles.kvValue}>{acc.data.phone}</Text></View>
+                </View>
+              );
+            })()}
+          </View>
+
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Amount (NLe)</Text>
             <View style={styles.inputBox}>
@@ -417,6 +475,25 @@ export default function LoansScreen() {
               <TextInput value={purpose} onChangeText={setPurpose} placeholder="What do you need this loan for?" style={[styles.input, { height: 80, textAlignVertical: 'top' }]} multiline numberOfLines={3} testID="purposeInput" />
             </View>
           </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Guarantor</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Guarantor NIN</Text>
+              <View style={styles.inputBox}>
+                <TextInput value={guarantorNin} onChangeText={setGuarantorNin} placeholder="Enter guarantor NIN" style={styles.input} testID="guarantorNin" />
+              </View>
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Guarantor ID Doc URL</Text>
+              <View style={styles.inputBox}>
+                <TextInput value={guarantorIdUrl} onChangeText={setGuarantorIdUrl} placeholder="https://..." style={styles.input} testID="guarantorIdUrl" />
+              </View>
+            </View>
+          </View>
+
+          <Terms />
+
           <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={loading} testID="submitLoanRequest">
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Submit Request</Text>}
           </TouchableOpacity>
@@ -520,6 +597,8 @@ export default function LoansScreen() {
               ))
             )}
           </View>
+
+          <Terms />
         </ScrollView>
 
         <Modal visible={showRepayModal} transparent animationType="fade" onRequestClose={() => setShowRepayModal(false)}>
@@ -799,6 +878,112 @@ export default function LoansScreen() {
     </SafeAreaView>
   );
 
+  const renderAccounts = () => (
+    <SafeAreaView style={styles.container}>
+      {renderHeader('Loan Accounts', () => setView('home'))}
+      <ScrollView style={styles.scroll}>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Type</Text>
+          {['individual','mfi','organization'].map((t)=> (
+            <TouchableOpacity key={t} style={[styles.selector, accountType===t && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={()=>setAccountType(t)} testID={`acctType-${t}`}>
+              <Text style={styles.selectorText}>{t==='individual' ? 'Individual/Personal' : t==='mfi' ? 'Microfinance Institution' : 'Organization (NGO/CBO/Social Club)'}</Text>
+              {accountType===t ? <Check color="#FFA500" size={18} /> : <Text style={styles.selectorArrow}>▼</Text>}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Details</Text>
+          {trustScore < 100 ? (
+            <Text style={[styles.muted, { marginBottom: 8 }]}>Complete Trust to 100% to create a loan account.</Text>
+          ) : null}
+          {accountType === 'individual' && (
+            <>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Full name</Text><View style={styles.inputBox}><TextInput value={accountForm.fullName} onChangeText={(t)=>setAccountForm({...accountForm, fullName:t})} placeholder="Full name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.nin} onChangeText={(t)=>setAccountForm({...accountForm, nin:t})} placeholder="National ID Number" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address</Text><View style={styles.inputBox}><TextInput value={accountForm.address} onChangeText={(t)=>setAccountForm({...accountForm, address:t})} placeholder="Address" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone</Text><View style={styles.inputBox}><TextInput value={accountForm.phone} onChangeText={(t)=>setAccountForm({...accountForm, phone:t})} placeholder="Phone" style={styles.input} keyboardType="phone-pad" /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Email (optional)</Text><View style={styles.inputBox}><TextInput value={accountForm.email} onChangeText={(t)=>setAccountForm({...accountForm, email:t})} placeholder="Email" style={styles.input} keyboardType="email-address" /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>ID Card (front URL)</Text><View style={styles.inputBox}><TextInput value={accountForm.idFrontUrl} onChangeText={(t)=>setAccountForm({...accountForm, idFrontUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>ID Card (back URL)</Text><View style={styles.inputBox}><TextInput value={accountForm.idBackUrl} onChangeText={(t)=>setAccountForm({...accountForm, idBackUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
+            </>
+          )}
+
+          {accountType === 'mfi' && (
+            <>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Institution Name</Text><View style={styles.inputBox}><TextInput value={accountForm.institutionName} onChangeText={(t)=>setAccountForm({...accountForm, institutionName:t})} placeholder="Institution" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Head Office Address</Text><View style={styles.inputBox}><TextInput value={accountForm.headOfficeAddress} onChangeText={(t)=>setAccountForm({...accountForm, headOfficeAddress:t})} placeholder="Address" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO Name</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoName} onChangeText={(t)=>setAccountForm({...accountForm, ceoName:t})} placeholder="CEO Name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoNin} onChangeText={(t)=>setAccountForm({...accountForm, ceoNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO ID Front URL</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoIdFrontUrl} onChangeText={(t)=>setAccountForm({...accountForm, ceoIdFrontUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO ID Back URL</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoIdBackUrl} onChangeText={(t)=>setAccountForm({...accountForm, ceoIdBackUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Address</Text><View style={styles.inputBox}><TextInput value={accountForm.branchAddress} onChangeText={(t)=>setAccountForm({...accountForm, branchAddress:t})} placeholder="Branch Address" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager Name</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerName} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerName:t})} placeholder="Manager Name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerNin} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Certificate 1 URL</Text><View style={styles.inputBox}><TextInput value={accountForm.certificate1Url} onChangeText={(t)=>setAccountForm({...accountForm, certificate1Url:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Certificate 2 URL</Text><View style={styles.inputBox}><TextInput value={accountForm.certificate2Url} onChangeText={(t)=>setAccountForm({...accountForm, certificate2Url:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
+            </>
+          )}
+
+          {accountType === 'organization' && (
+            <>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Kind</Text><View style={styles.inputBox}><TextInput value={accountForm.orgKind} onChangeText={(t)=>setAccountForm({...accountForm, orgKind:t})} placeholder="NGO/CBO/Social Club/Institution" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Organization Name</Text><View style={styles.inputBox}><TextInput value={accountForm.orgName} onChangeText={(t)=>setAccountForm({...accountForm, orgName:t})} placeholder="Name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Office Address</Text><View style={styles.inputBox}><TextInput value={accountForm.officeAddress} onChangeText={(t)=>setAccountForm({...accountForm, officeAddress:t})} placeholder="Address" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader (CEO/President)</Text><View style={styles.inputBox}><TextInput value={accountForm.leaderName} onChangeText={(t)=>setAccountForm({...accountForm, leaderName:t})} placeholder="Name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Leader NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.leaderNin} onChangeText={(t)=>setAccountForm({...accountForm, leaderNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Role</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorRole} onChangeText={(t)=>setAccountForm({...accountForm, creatorRole:t})} placeholder="CEO/President/Chairman/..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator Name</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorName} onChangeText={(t)=>setAccountForm({...accountForm, creatorName:t})} placeholder="Your name" style={styles.input} /></View></View>
+              <View style={styles.inputGroup}><Text style={styles.inputLabel}>Creator NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.creatorNin} onChangeText={(t)=>setAccountForm({...accountForm, creatorNin:t})} placeholder="NIN" style={styles.input} /></View></View>
+              <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
+            </>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.primaryBtn, { margin: 16 }]}
+          disabled={loading || trustScore < 100}
+          onPress={async ()=>{
+            if (trustScore < 100) { Alert.alert('Not eligible', 'Trust must be 100%'); return; }
+            try {
+              setLoading(true);
+              const id = Date.now().toString();
+              const record = { id, type: accountType, ownerId: userId, data: { ...accountForm } };
+              const next = [...loanAccounts.filter(a=>!(a.ownerId===userId && a.type===accountType)), record];
+              await saveAccounts(next);
+              await addLedger('loan-account-created', { id, type: accountType, ownerId: userId });
+              Alert.alert('Created', 'Loan account saved');
+            } catch(e) {
+              console.log('[Loans] acct create error', e);
+              Alert.alert('Error', 'Failed to save account');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          testID="saveAccountBtn"
+        >
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save Account</Text>}
+        </TouchableOpacity>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>My Accounts</Text>
+          {loanAccounts.filter(a=>a.ownerId===userId).length===0 ? (
+            <Text style={styles.muted}>No accounts yet</Text>
+          ) : (
+            loanAccounts.filter(a=>a.ownerId===userId).map((a)=> (
+              <View key={a.id} style={styles.listRowBetween}>
+                <View style={styles.rowLeft}><HandCoins color="#FFA500" size={18} /><Text style={styles.listText}>{a.type}</Text></View>
+                <Text style={styles.smallMuted}>{new Date(parseInt(a.id,10)).toLocaleString()}</Text>
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+
   return (
     <>
       {loading && view === 'home' ? null : null}
@@ -809,6 +994,7 @@ export default function LoansScreen() {
       {view === 'orgs' && renderOrgs()}
       {view === 'orgDetails' && renderOrgDetails()}
       {view === 'ledger' && renderLedger()}
+      {view === 'accounts' && renderAccounts()}
     </>
   );
 }
