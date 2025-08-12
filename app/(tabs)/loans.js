@@ -474,9 +474,6 @@ export default function LoansScreen() {
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('my')} testID="myLoansBtn">
             <Text style={styles.secondaryBtnText}>My Loans</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('orgs')} testID="orgsBtn">
-            <Text style={styles.secondaryBtnText}>Organizations</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('accounts')} testID="accountsBtn">
             <Text style={styles.secondaryBtnText}>Loan Accounts</Text>
           </TouchableOpacity>
