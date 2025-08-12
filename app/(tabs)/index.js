@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Users, User, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins, GraduationCap } from 'lucide-react-native';
+import { Users, User, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins, GraduationCap, Bell } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const palette = {
@@ -62,17 +62,19 @@ export default function HomeScreen() {
   const [payments, setPayments] = useState([]);
   const [walletTx, setWalletTx] = useState([]);
   const [groupsPreview, setGroupsPreview] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     (async () => {
       try {
-        const [ud, mmRaw, banksRaw, pays, wtx, groupsRaw] = await Promise.all([
+        const [ud, mmRaw, banksRaw, pays, wtx, groupsRaw, notifsRaw] = await Promise.all([
           AsyncStorage.getItem('userData'),
           AsyncStorage.getItem('mobileMoney'),
           AsyncStorage.getItem('linkedBanks'),
           AsyncStorage.getItem('payments'),
           AsyncStorage.getItem('walletTx'),
           AsyncStorage.getItem('availableGroups'),
+          AsyncStorage.getItem('notifications'),
         ]);
         if (ud) setUser(JSON.parse(ud));
         if (mmRaw) setMm(JSON.parse(mmRaw));
@@ -83,6 +85,13 @@ export default function HomeScreen() {
           try {
             const gs = JSON.parse(groupsRaw);
             setGroupsPreview(Array.isArray(gs) ? gs.slice(0, 5) : []);
+          } catch {}
+        }
+        if (notifsRaw) {
+          try {
+            const ns = JSON.parse(notifsRaw);
+            const count = Array.isArray(ns) ? ns.filter(n => !n.read).length : 0;
+            setUnreadCount(count);
           } catch {}
         }
       } catch (e) {
@@ -132,7 +141,31 @@ export default function HomeScreen() {
         <LinearGradient colors={["#e0ecff", "#f5f7ff"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bgDecorGrad} />
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.bigTitle}>Home</Text>
+        <View style={styles.topBar}>
+          <Text style={styles.bigTitle}>Home</Text>
+          <PressableScale
+            onPress={() => {
+              try {
+                router.push('/(tabs)/chats');
+              } catch (e) {
+                Alert.alert('Notifications', 'Notifications screen coming soon');
+              }
+            }}
+            testID="btnNotifications"
+            style={styles.bellWrap}
+          >
+            <View>
+              <LinearGradient colors={["#ffffff", "#e5edff"]} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.bellBg}>
+                <Bell color={palette.primary} size={20} />
+              </LinearGradient>
+              {unreadCount > 0 && (
+                <View style={styles.badge} testID="notifBadge">
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : String(unreadCount)}</Text>
+                </View>
+              )}
+            </View>
+          </PressableScale>
+        </View>
         <LinearGradient colors={[palette.primary, '#102B73']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCardNew}>
           <View style={{ padding: 16 }}>
             <Text style={styles.balanceLabelLight}>Balance</Text>
@@ -230,7 +263,8 @@ const styles = StyleSheet.create({
   bgDecorGrad: { flex: 1, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   scroll: { flex: 1 },
 
-  bigTitle: { fontSize: 22, fontWeight: '800', color: palette.text, marginTop: 16, marginHorizontal: 16, marginBottom: 8 },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, marginHorizontal: 16, marginBottom: 8 },
+  bigTitle: { fontSize: 22, fontWeight: '800', color: palette.text },
 
   summaryCardNew: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
   balanceLabelLight: { color: '#DCE7FF' },
@@ -260,4 +294,9 @@ const styles = StyleSheet.create({
   groupLogoText: { fontSize: 24, fontWeight: '800', color: '#243b2f' },
   groupNameMini: { marginTop: 8, marginLeft: 4, color: palette.text, fontWeight: '700' },
   groupSubMini: { marginLeft: 4, color: '#6b7280', fontSize: 12 },
+
+  bellWrap: { padding: 4 },
+  bellBg: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6ECFF' },
+  badge: { position: 'absolute', right: -2, top: -2, backgroundColor: '#ef4444', borderRadius: 8, paddingHorizontal: 4, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 });
