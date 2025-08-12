@@ -59,6 +59,7 @@ export default function LoansScreen() {
   const [orgs, setOrgs] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [groupTab, setGroupTab] = useState('all');
   const [linkedBanks, setLinkedBanks] = useState([]);
   const [mobileMoney, setMobileMoney] = useState(null);
 
@@ -97,6 +98,21 @@ export default function LoansScreen() {
           AsyncStorage.getItem('mobileMoney'),
           AsyncStorage.getItem('loanAccounts'),
         ]);
+        const seedIfEmpty = async () => {
+          try {
+            const current = gr ? JSON.parse(gr) : [];
+            if (!current || current.length === 0) {
+              const samples = [
+                { id: 'lg-1001', name: 'Monthly Savers Circle', frequency: 'Monthly', membersList: [ { id:'m1', name:'Aminata', phone:'070000001' }, { id:'m2', name:'Joseph', phone:'070000002' }, { id:'m3', name:'Mariama', phone:'070000003' } ], nextEvent: 'Contribution due 28th' },
+                { id: 'lg-1002', name: 'Weekly Investment Group', frequency: 'Weekly', membersList: [ { id:'m4', name:'Isha', phone:'070000004' }, { id:'m5', name:'Kabba', phone:'070000005' } ], nextEvent: 'Payout rotation on Friday' },
+                { id: 'lg-1003', name: 'Community Osusu', frequency: 'Bi-weekly', membersList: [ { id:'m6', name:'Samuel', phone:'070000006' }, { id:'m7', name:'Hassan', phone:'070000007' }, { id:'m8', name:'Fatmata', phone:'070000008' }, { id:'m9', name:'Kadi', phone:'070000009' } ], nextEvent: 'Meeting: Sat 4pm' },
+              ];
+              await AsyncStorage.setItem('availableGroups', JSON.stringify(samples));
+              setGroups(samples);
+            }
+          } catch (se) { console.log('[Loans] seed groups error', se); }
+        };
+        await seedIfEmpty();
         if (ud) setUserData(JSON.parse(ud));
         if (ls) setLoans(JSON.parse(ls));
         if (os) setOrgs(JSON.parse(os));
@@ -484,6 +500,9 @@ export default function LoansScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('accounts')} testID="accountsBtn">
             <Text style={styles.secondaryBtnText}>Loan Accounts</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('loanGroups')} testID="loanGroupsBtn">
+            <Text style={styles.secondaryBtnText}>Loan Groups</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => setView('ledger')} testID="ledgerBtn">
             <Text style={styles.secondaryBtnText}>Ledger</Text>
@@ -1003,6 +1022,56 @@ export default function LoansScreen() {
     </SafeAreaView>
   );
 
+  const renderLoanGroups = () => {
+    const mine = groups.filter((g)=> (g.membersList||[]).some((m)=> m.phone === userData.phone));
+    const list = groupTab === 'all' ? groups : mine;
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderHeader('Loan Groups', () => setView('home'))}
+        <ScrollView style={styles.scroll}>
+          <View style={[styles.card, { paddingVertical: 16 }]}>
+            <View style={styles.tabRow}>
+              {[
+                { key: 'all', label: 'All Groups' },
+                { key: 'mine', label: 'My Groups' },
+              ].map((t) => (
+                <TouchableOpacity
+                  key={t.key}
+                  style={[styles.tabBtn, groupTab === t.key && styles.tabBtnActive]}
+                  onPress={() => setGroupTab(t.key)}
+                  testID={`groupTab-${t.key}`}
+                >
+                  <Text style={[styles.tabText, groupTab === t.key && styles.tabTextActive]}>{t.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {list.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Users color="#ccc" size={40} />
+              <Text style={styles.emptyText}>No groups</Text>
+            </View>
+          ) : (
+            list.map((g) => (
+              <View key={g.id} style={styles.card} testID={`loanGroup-${g.id}`}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.cardHeaderLeft}>
+                    <Users color="#5CCEF4" size={20} />
+                    <Text style={styles.cardTitle}>{g.name}</Text>
+                  </View>
+                  <View style={[styles.badge, styles.badgeOrange]}><Text style={styles.badgeText}>{g.frequency || '—'}</Text></View>
+                </View>
+                <View style={styles.cardRow}><Text style={styles.cardText}>Members: {(g.membersList||[]).length}</Text></View>
+                {g.nextEvent ? <View style={styles.cardRow}><Calendar color="#666" size={16} /><Text style={styles.cardText}>{g.nextEvent}</Text></View> : null}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
+
   const renderAccounts = () => (
     <SafeAreaView style={styles.container}>
       {renderHeader('Loan Account Type', () => setView('home'))}
@@ -1209,6 +1278,7 @@ export default function LoansScreen() {
       {view === 'orgDetails' && renderOrgDetails()}
       {view === 'ledger' && renderLedger()}
       {view === 'accounts' && renderAccounts()}
+      {view === 'loanGroups' && renderLoanGroups()}
     </>
   );
 }
