@@ -18,11 +18,49 @@ export default function ChatsHome() {
           AsyncStorage.getItem('availableGroups'),
           AsyncStorage.getItem('userData'),
         ]);
-        const g = gs ? JSON.parse(gs) : [];
+
+        let g = [];
+        try { g = gs ? JSON.parse(gs) : []; } catch { g = []; }
+
+        if (!Array.isArray(g) || g.length === 0) {
+          const sampleGroups = [
+            {
+              id: 'grp-devs',
+              name: 'Dev Team',
+              lastMessage: 'Standup at 10:00, don’t be late ⏰',
+              membersList: [
+                { phone: '+15550001', name: 'Alice Johnson', avatarUrl: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?q=80&w=256&auto=format&fit=crop' },
+                { phone: '+15550002', name: 'Bob Lee', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=256&auto=format&fit=crop' },
+                { phone: '+15550003', name: 'Chris Wong', avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=256&auto=format&fit=crop' },
+              ],
+            },
+            {
+              id: 'grp-hike',
+              name: 'Weekend Hikers',
+              lastMessage: 'Trail starts 6am. Bring water 🥾',
+              membersList: [
+                { phone: '+15550004', name: 'Diana Prince', avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=256&auto=format&fit=crop' },
+                { phone: '+15550005', name: 'Ethan Hunt', avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=256&auto=format&fit=crop' },
+              ],
+            },
+          ];
+          g = sampleGroups;
+          try { await AsyncStorage.setItem('availableGroups', JSON.stringify(sampleGroups)); } catch (e) { console.log('[Chats] seed groups persist err', e); }
+        }
+
         setGroups(Array.isArray(g) ? g : []);
+
         const me = ud ? JSON.parse(ud) : { phone: 'guest' };
+
+        const sampleDirects = [
+          { phone: '+15550006', name: 'Femi Ade', avatarUrl: 'https://images.unsplash.com/photo-1511367461989-f85a21fda167?q=80&w=256&auto=format&fit=crop', lastMessage: 'Send the invoice when free.' },
+          { phone: '+15550007', name: 'Grace Kim', avatarUrl: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=256&auto=format&fit=crop', lastMessage: 'Thanks! Received 👌' },
+          { phone: '+15550008', name: 'Hassan Ali', avatarUrl: 'https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=256&auto=format&fit=crop', lastMessage: 'Lunch tomorrow?' },
+        ];
+
         const uniques = new Map();
         (g || []).forEach((gr) => (gr.membersList || []).forEach((m) => { if (m && m.phone) uniques.set(m.phone, m); }));
+        sampleDirects.forEach((m) => { if (m && m.phone) uniques.set(m.phone, m); });
         uniques.delete(me?.phone);
         setPeople(Array.from(uniques.values()));
       } catch (e) {
