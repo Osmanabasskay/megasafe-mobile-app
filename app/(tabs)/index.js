@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins } from 'lucide-react-native';
+import { Users, User, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins, RotateCcw, Zap, PiggyBank, HandCoins, GraduationCap } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const palette = {
@@ -173,10 +173,10 @@ export default function HomeScreen() {
         <View style={styles.sectionBlock}>
           <SectionHeader title="Savings Goals" Icon={PiggyBank} gradient={["#34d399", "#059669"]} testID="header-savings" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-            {[{ key:'rent', title:'House Rent', sub:`${currency(2500)} / ${currency(10000)}`, bg:['#c6e0da','#86b3aa'], icon: Home }, { key:'school', title:'School Fees', sub:`${currency(1200)} / ${currency(5000)}`, bg:['#c5dee6','#7aa3b5'], icon: FileText }].map(card => (
+            {[{ key:'rent', title:'House Rent', sub:`${currency(2500)} / ${currency(10000)}`, bg:['#6366f1','#22d3ee'], icon: Home, iconColor:'#ffffff' }, { key:'school', title:'School Fees', sub:`${currency(1200)} / ${currency(5000)}`, bg:['#f59e0b','#ef4444'], icon: GraduationCap, iconColor:'#ffffff' }].map(card => (
               <PressableScale key={card.key} onPress={() => router.push('/(tabs)/savings')} testID={`goal-${card.key}`} style={{ paddingRight: 12 }}>
                 <LinearGradient colors={card.bg} start={{x:0,y:0}} end={{x:1,y:1}} style={styles.goalCard}>
-                  <card.icon color="#0b1f2a" size={28} />
+                  <card.icon color={card.iconColor || "#0b1f2a"} size={28} />
                 </LinearGradient>
                 <Text style={styles.goalTitle}>{card.title}</Text>
                 <Text style={styles.goalSub}>{card.sub}</Text>
@@ -189,9 +189,9 @@ export default function HomeScreen() {
           <SectionHeader title="Loans" Icon={HandCoins} gradient={["#60a5fa", "#3b82f6"]} testID="header-loans" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {[ 
-              { key: 'loan-ind', label: 'Individual Loans', icon: FileText, color:'#0b3b2e', bg:['#b8d9d2','#91c3ba'], onPress: ()=>router.push('/(tabs)/loans') },
-              { key: 'loan-group', label: 'Group Loans', icon: Users, color:'#093a3e', bg:['#b7d6d2','#8fbfb9'], onPress: ()=>router.push('/(tabs)/loans') },
-              { key: 'loan-org', label: 'Organizational Loans', icon: Building2, color:'#0b1f2a', bg:['#dfe7e1','#cddbd3'], onPress: ()=>router.push('/(tabs)/loans') },
+              { key: 'loan-ind', label: 'Individual Loans', icon: User, color:'#ffffff', bg:['#a78bfa','#6366f1'], onPress: ()=>router.push('/(tabs)/loans') },
+              { key: 'loan-group', label: 'Group Loans', icon: Users, color:'#ffffff', bg:['#22c55e','#16a34a'], onPress: ()=>router.push('/(tabs)/loans') },
+              { key: 'loan-org', label: 'Organizational Loans', icon: Building2, color:'#ffffff', bg:['#60a5fa','#2563eb'], onPress: ()=>router.push('/(tabs)/loans') },
             ].map((g)=>(
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon:g.color, bg:g.bg, onPress:g.onPress, testID:g.key }} />
             ))}
