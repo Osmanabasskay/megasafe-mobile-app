@@ -74,6 +74,7 @@ export default function LoansScreen() {
   const [repayAmount, setRepayAmount] = useState('');
   const [repayMethod, setRepayMethod] = useState('mm');
   const [selectedBankId, setSelectedBankId] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(false);
 
   const [orgName, setOrgName] = useState('');
   const [orgGroupId, setOrgGroupId] = useState('');
@@ -228,6 +229,7 @@ export default function LoansScreen() {
   }, []);
 
   const requestLoan = useCallback(async () => {
+    if (!agreedTerms) { Alert.alert('Agreement Required', 'You must agree to the terms and conditions before submitting'); return; }
     const a = parseFloat(amount);
     if (trustScore < 100) { Alert.alert('Not eligible', 'Complete your Trust to 100% to request a loan'); return; }
     if (isNaN(a) || a <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
@@ -259,8 +261,8 @@ export default function LoansScreen() {
       const next = [...loans, loan];
       await saveLoans(next);
       await addLedger('loan-requested', { loanId: loan.id, borrowerId: loan.borrowerId, amount: a });
-      setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdFrontB64(''); setGuarantorIdBackB64('');
-      setView('my');
+      setAmount(''); setInterest(''); setTerm(''); setPurpose(''); setGuarantorNin(''); setGuarantorIdFrontB64(''); setGuarantorIdBackB64(''); setAgreedTerms(false);
+      setView('home');
       setTimeout(() => { try { Alert.alert('Requested', 'Loan request submitted. View it under My Loans.'); } catch {} }, 50);
     } catch (e) {
       console.log('[Loans] request error', e);
@@ -268,7 +270,7 @@ export default function LoansScreen() {
     } finally {
       setLoading(false);
     }
-  }, [amount, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdFrontB64, guarantorIdBackB64, loanAccounts, mobileMoney, linkedBanks]);
+  }, [agreedTerms, amount, purpose, userId, userData, loans, saveLoans, addLedger, maxLoan, formatCurrency, trustScore, guarantorNin, guarantorIdFrontB64, guarantorIdBackB64, loanAccounts, mobileMoney, linkedBanks]);
 
   const approveLoan = useCallback(async (org, loan, params) => {
     try {
@@ -533,7 +535,14 @@ export default function LoansScreen() {
 
           <Terms />
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={loading} testID="submitLoanRequest">
+          <TouchableOpacity style={styles.checkboxRow} onPress={() => setAgreedTerms(!agreedTerms)} testID="agreeTerms">
+            <View style={[styles.checkboxBox, agreedTerms && { backgroundColor: '#FFA500', borderColor: '#FFA500' }]}>
+              {agreedTerms ? <Check color="#fff" size={16} /> : null}
+            </View>
+            <Text style={styles.checkboxLabel}>I have read and agree to the Terms & Conditions</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={loading || !agreedTerms} testID="submitLoanRequest">
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Submit Request</Text>}
           </TouchableOpacity>
         </ScrollView>
@@ -1148,4 +1157,8 @@ const styles = StyleSheet.create({
   approveBtnText: { color: '#fff', fontWeight: '700' },
   rejectBtn: { backgroundColor: '#e74c3c', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
   rejectBtnText: { color: '#fff', fontWeight: '700' },
+
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12 },
+  checkboxBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  checkboxLabel: { color: '#333', flex: 1 },
 });
