@@ -228,6 +228,33 @@ export default function LoansScreen() {
     }
   }, []);
 
+  const pickAccountImage = useCallback(async (fieldKey) => {
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Please allow photo library access to attach ID');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        base64: true,
+        quality: 0.7,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        aspect: [3, 2],
+      });
+      if (result.canceled) return;
+      const asset = result.assets && result.assets[0];
+      const b64 = asset?.base64 ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}` : '';
+      if (!b64) { Alert.alert('Error', 'Failed to read image'); return; }
+      setAccountForm((f)=>({ ...f, [fieldKey]: b64 }));
+    } catch (e) {
+      console.log('[Loans] pickAccountImage error', e);
+      Alert.alert('Error', 'Could not pick image');
+    }
+  }, []);
+
   const requestLoan = useCallback(async () => {
     if (!agreedTerms) { Alert.alert('Agreement Required', 'You must agree to the terms and conditions before submitting'); return; }
     const a = parseFloat(amount);
@@ -981,8 +1008,25 @@ export default function LoansScreen() {
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Address</Text><View style={styles.inputBox}><TextInput value={accountForm.address} onChangeText={(t)=>setAccountForm({...accountForm, address:t})} placeholder="Address" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Phone</Text><View style={styles.inputBox}><TextInput value={accountForm.phone} onChangeText={(t)=>setAccountForm({...accountForm, phone:t})} placeholder="Phone" style={styles.input} keyboardType="phone-pad" /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Email (optional)</Text><View style={styles.inputBox}><TextInput value={accountForm.email} onChangeText={(t)=>setAccountForm({...accountForm, email:t})} placeholder="Email" style={styles.input} keyboardType="email-address" /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>ID Card (front URL)</Text><View style={styles.inputBox}><TextInput value={accountForm.idFrontUrl} onChangeText={(t)=>setAccountForm({...accountForm, idFrontUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>ID Card (back URL)</Text><View style={styles.inputBox}><TextInput value={accountForm.idBackUrl} onChangeText={(t)=>setAccountForm({...accountForm, idBackUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>ID Card Photos</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('idFrontUrl')} testID="pickAcctFront">
+                    <Text style={styles.secondaryBtnText}>{accountForm.idFrontUrl ? 'Replace Front' : 'Pick Front'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('idBackUrl')} testID="pickAcctBack">
+                    <Text style={styles.secondaryBtnText}>{accountForm.idBackUrl ? 'Replace Back' : 'Pick Back'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.idFrontUrl ? <Image source={{ uri: accountForm.idFrontUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
+                  </View>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.idBackUrl ? <Image source={{ uri: accountForm.idBackUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
+                  </View>
+                </View>
+              </View>
               <Text style={[styles.muted, { marginHorizontal: 16 }]}>By creating, you accept the loan Terms & Conditions.</Text>
             </>
           )}
@@ -993,8 +1037,25 @@ export default function LoansScreen() {
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Head Office Address</Text><View style={styles.inputBox}><TextInput value={accountForm.headOfficeAddress} onChangeText={(t)=>setAccountForm({...accountForm, headOfficeAddress:t})} placeholder="Address" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO Name</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoName} onChangeText={(t)=>setAccountForm({...accountForm, ceoName:t})} placeholder="CEO Name" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoNin} onChangeText={(t)=>setAccountForm({...accountForm, ceoNin:t})} placeholder="NIN" style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO ID Front URL</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoIdFrontUrl} onChangeText={(t)=>setAccountForm({...accountForm, ceoIdFrontUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
-              <View style={styles.inputGroup}><Text style={styles.inputLabel}>CEO ID Back URL</Text><View style={styles.inputBox}><TextInput value={accountForm.ceoIdBackUrl} onChangeText={(t)=>setAccountForm({...accountForm, ceoIdBackUrl:t})} placeholder="https://..." style={styles.input} /></View></View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>CEO ID Card Photos</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('ceoIdFrontUrl')} testID="pickCeoFront">
+                    <Text style={styles.secondaryBtnText}>{accountForm.ceoIdFrontUrl ? 'Replace Front' : 'Pick Front'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.secondaryBtn, { flex: 1, height: 44 }]} onPress={() => pickAccountImage('ceoIdBackUrl')} testID="pickCeoBack">
+                    <Text style={styles.secondaryBtnText}>{accountForm.ceoIdBackUrl ? 'Replace Back' : 'Pick Back'}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.ceoIdFrontUrl ? <Image source={{ uri: accountForm.ceoIdFrontUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Front preview</Text>}
+                  </View>
+                  <View style={[styles.inputBox, { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }]}> 
+                    {accountForm.ceoIdBackUrl ? <Image source={{ uri: accountForm.ceoIdBackUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : <Text style={styles.smallMuted}>Back preview</Text>}
+                  </View>
+                </View>
+              </View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Address</Text><View style={styles.inputBox}><TextInput value={accountForm.branchAddress} onChangeText={(t)=>setAccountForm({...accountForm, branchAddress:t})} placeholder="Branch Address" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager Name</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerName} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerName:t})} placeholder="Manager Name" style={styles.input} /></View></View>
               <View style={styles.inputGroup}><Text style={styles.inputLabel}>Branch Manager NIN</Text><View style={styles.inputBox}><TextInput value={accountForm.branchManagerNin} onChangeText={(t)=>setAccountForm({...accountForm, branchManagerNin:t})} placeholder="NIN" style={styles.input} /></View></View>
