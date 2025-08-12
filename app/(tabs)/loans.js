@@ -1134,9 +1134,8 @@ export default function LoansScreen() {
         <LinearGradient colors={["#ff9f43", "#ff6b00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.primaryGradient, { margin: 16 }]}>
           <TouchableOpacity
             style={styles.primaryBtn}
-            disabled={loading || trustScore < 100}
+            disabled={loading}
             onPress={async ()=>{
-              if (trustScore < 100) { Alert.alert('Not eligible', 'Trust must be 100%'); return; }
               const requiredByType = accountType === 'individual' ? ['fullName','nin','address','phone','idFrontUrl','idBackUrl'] : accountType === 'mfi' ? ['institutionName','headOfficeAddress','ceoName','ceoNin','ceoIdFrontUrl','ceoIdBackUrl','branchAddress','branchManagerName','branchManagerNin','certificate1Url','certificate2Url'] : ['orgKind','orgName','officeAddress','leaderName','leaderNin','creatorRole','creatorName','creatorNin'];
               const nextErrors = {};
               requiredByType.forEach((k)=>{ if(!String(accountForm[k]||'').trim()) nextErrors[k]=true; });
@@ -1159,7 +1158,7 @@ export default function LoansScreen() {
                   creatorRole: '', creatorName: '', creatorNin: '', creatorIdFrontUrl: '', creatorIdBackUrl: '', creatorPassportUrl: '',
                   orgKind: 'NGO',
                 });
-                setView('accounts');
+                setView('home');
                 Alert.alert('Created', 'Loan account saved');
               } catch(e) {
                 console.log('[Loans] acct create error', e);
