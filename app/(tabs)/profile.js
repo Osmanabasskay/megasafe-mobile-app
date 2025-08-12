@@ -527,14 +527,12 @@ export default function ProfileScreen() {
         ];
         await AsyncStorage.multiRemove(keysToRemove);
         await AsyncStorage.setItem('isLoggedIn', 'false');
-        await AsyncStorage.setItem('onboardingDone', 'true');
+        await AsyncStorage.setItem('onboardingDone', 'false');
         await AsyncStorage.setItem('justLoggedOut', 'true');
         await new Promise((r) => setTimeout(r, 120));
 
         if (Platform.OS === 'web') {
-          try {
-            router.replace('/');
-          } catch {}
+          try { router.replace('/'); } catch {}
           setTimeout(() => {
             try { window.history.replaceState(null, '', '/'); } catch {}
             try { window.location.reload(); } catch {}
