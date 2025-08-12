@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView, SafeAreaView, Animated } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { Users, PiggyBank, Wallet as WalletIcon, HandCoins, CreditCard, CircuitBoard, Settings as SettingsIcon, MessageCircle, BarChart3, FileText, Link as LinkIcon, Home, Building2 } from 'lucide-react-native';
+import { Users, Wallet as WalletIcon, CreditCard, FileText, Link as LinkIcon, Home, Building2, Banknote, Coins } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const palette = {
-  primary: '#00157f',
-  teal: '#14B8A6',
-  gold: '#FFA500',
-  green: '#22C55E',
-  coral: '#F97316',
-  bg: '#F9FAFB',
-  text: '#111827',
-  grayCard: '#F3F4F6',
+  primary: '#0B5FFF',
+  orange: '#FF7A00',
+  blueDark: '#0A1B3E',
+  bg: '#F6F8FF',
+  text: '#0F172A',
+  grayCard: '#EEF2FF',
 };
 
 function PressableScale({ onPress, children, style, testID }) {
@@ -36,9 +34,9 @@ function PressableScale({ onPress, children, style, testID }) {
 function FeatureTile({ label, Icon, colors }) {
   return (
     <PressableScale onPress={colors.onPress} testID={colors.testID} style={styles.featureWrap}>
-      <View style={styles.featureInner}>
-        <LinearGradient colors={colors.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconBg}>
-          <Icon color={colors.icon} size={22} />
+      <View style={styles.featureInnerSquare}>
+        <LinearGradient colors={colors.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconBgSquare}>
+          <Icon color={colors.icon} size={24} />
         </LinearGradient>
         <Text style={styles.tileText}>{label}</Text>
       </View>
@@ -110,9 +108,9 @@ export default function HomeScreen() {
   const totalAll = walletBalance + groupContrib + goalsContrib;
 
   const grid = [
-    { key: 'link-om', label: 'Orange Money', icon: LinkIcon, color: '#f59e0b', bg: ['#0f172a', '#0b1222'], onPress: () => router.push('/(tabs)/profile'), testID: 'linkOM' },
-    { key: 'link-afri', label: 'AfriMoney', icon: LinkIcon, color: '#16a34a', bg: ['#334155', '#3f4a5a'], onPress: () => router.push('/(tabs)/profile'), testID: 'linkAfri' },
-    { key: 'link-qcell', label: 'QMoney', icon: LinkIcon, color: '#0ea5e9', bg: ['#111827', '#1f2937'], onPress: () => router.push('/(tabs)/profile'), testID: 'linkQcell' },
+    { key: 'add-bank', label: 'Add Bank', icon: Banknote, color: '#ffffff', bg: [palette.primary, '#1449CC'], onPress: () => router.push('/(tabs)/wallet'), testID: 'addBank' },
+    { key: 'link-crypto', label: 'Link Crypto', icon: Coins, color: '#ffffff', bg: [palette.orange, '#FF8F33'], onPress: () => router.push('/(tabs)/blockchain'), testID: 'linkCrypto' },
+    { key: 'link-om', label: 'Orange Money', icon: LinkIcon, color: '#ffffff', bg: ['#1E293B', '#0F172A'], onPress: () => router.push('/(tabs)/profile'), testID: 'linkOM' },
   ];
 
   const currency = (n) => `NLe ${new Intl.NumberFormat('en-SL', { maximumFractionDigits: 2 }).format(n)}`;
@@ -120,34 +118,37 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
-        <Text style={styles.bigTitle}>Transaction Summary</Text>
-        <View style={styles.summaryCard}>
-          <Image source={{ uri: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200&auto=format&fit=crop' }} style={styles.summaryImage} />
-          <View style={{ padding: 12 }}>
-            <Text style={styles.balanceValue}>{currency(totalAll)}</Text>
-            <Text style={styles.balanceLabel}>Total Balance</Text>
-            <Text style={styles.activityLine}>Recent Activity: Sent NLe 500 to Group,</Text>
-            <Text style={styles.activityLine}>Received NLe 1,200 from User</Text>
+        <Text style={styles.bigTitle}>Home</Text>
+        <LinearGradient colors={[palette.primary, '#102B73']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.summaryCardNew}>
+          <View style={{ padding: 16 }}>
+            <Text style={styles.balanceLabelLight}>Balance</Text>
+            <Text style={styles.balanceValueLight}>{currency(totalAll)}</Text>
+            <View style={styles.activityRow}>
+              <Text style={styles.activityLight}>Recent Activity</Text>
+              <View style={styles.receivedBadge} testID="receivedBadge">
+                <Text style={styles.receivedBadgeText}>Received</Text>
+              </View>
+            </View>
           </View>
-        </View>
+        </LinearGradient>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Link Account</Text>
-          <View style={styles.grid}>
+          <Text style={styles.sectionHeader}>Quick Links</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8 }}>
             {grid.map((g) => (
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.testID }} />
             ))}
-          </View>
+          </ScrollView>
           {!!mm && <Text style={styles.gridCaption}>Orange Money Linked</Text>}
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionHeader}>Make Payment</Text>
+          <Text style={styles.sectionHeader}>Payments</Text>
           <View style={styles.grid}>
             {[ 
-              { key: 'pay-mm', label: 'Pay with Mobile Money', icon: WalletIcon, color: '#fff', bg: ['#0b1222', '#0f172a'], onPress: () => router.push('/(tabs)/make-payment') },
-              { key: 'pay-bank', label: 'Send via Bank', icon: Building2, color: '#0f172a', bg: ['#ffd3c2', '#ffe2d6'], onPress: () => router.push('/(tabs)/make-payment') },
-              { key: 'pay-receive', label: 'Receive Payment', icon: CreditCard, color: '#0b3b2e', bg: ['#cde9db', '#bfe3d3'], onPress: () => router.push('/(tabs)/wallet') },
+              { key: 'pay-mm', label: 'Mobile Money', icon: WalletIcon, color: '#ffffff', bg: [palette.primary, '#1449CC'], onPress: () => router.push('/(tabs)/make-payment') },
+              { key: 'pay-bank', label: 'Send via Bank', icon: Building2, color: '#0A1B3E', bg: ['#E0ECFF', '#CFE0FF'], onPress: () => router.push('/(tabs)/make-payment') },
+              { key: 'pay-receive', label: 'Receive', icon: CreditCard, color: '#0A1B3E', bg: ['#FFE2CC', '#FFD0AD'], onPress: () => router.push('/(tabs)/wallet') },
             ].map((g) => (
               <FeatureTile key={g.key} label={g.label} Icon={g.icon} colors={{ icon: g.color, bg: g.bg, onPress: g.onPress, testID: g.key }} />
             ))}
@@ -205,21 +206,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.bg },
   scroll: { flex: 1 },
 
-  bigTitle: { fontSize: 20, fontWeight: '800', color: palette.text, marginTop: 16, marginHorizontal: 16, marginBottom: 8, fontFamily: 'Montserrat' },
-  summaryCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
-  summaryImage: { width: '100%', height: 140, backgroundColor: '#e5e7eb' },
-  balanceLabel: { color: '#6b7280', marginTop: 4 },
-  balanceValue: { color: '#111827', fontSize: 22, fontWeight: '800', marginTop: 8, fontFamily: 'Montserrat' },
-  activityLine: { color: '#6b7280', marginTop: 4 },
+  bigTitle: { fontSize: 22, fontWeight: '800', color: palette.text, marginTop: 16, marginHorizontal: 16, marginBottom: 8 },
+
+  summaryCardNew: { marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 },
+  balanceLabelLight: { color: '#DCE7FF' },
+  balanceValueLight: { color: '#FFFFFF', fontSize: 28, fontWeight: '800', marginTop: 6 },
+  activityRow: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  activityLight: { color: '#E6EEFF', fontWeight: '600' },
+  receivedBadge: { backgroundColor: palette.orange, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  receivedBadgeText: { color: '#FFFFFF', fontWeight: '800' },
 
   sectionBlock: { marginTop: 18 },
-  sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text, marginHorizontal: 16, marginBottom: 10, fontFamily: 'Montserrat' },
+  sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text, marginHorizontal: 16, marginBottom: 10 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
-  featureWrap: { width: '33.3333%', padding: 8 },
-  featureInner: { backgroundColor: '#fff', borderRadius: 16, paddingVertical: 16, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  iconBg: { width: 60, height: 60, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  tileText: { marginTop: 8, fontWeight: '700', color: palette.text, fontSize: 12, textAlign: 'center', fontFamily: 'Montserrat' },
+  featureWrap: { width: 140, padding: 8 },
+  featureInnerSquare: { backgroundColor: '#fff', borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2, padding: 12 },
+  iconBgSquare: { width: 80, height: 80, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  tileText: { marginTop: 8, fontWeight: '700', color: palette.text, fontSize: 12, textAlign: 'center' },
   gridCaption: { color: '#6b7280', marginLeft: 16, marginTop: -4 },
 
   goalCard: { width: 148, height: 120, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
