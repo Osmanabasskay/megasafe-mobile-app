@@ -45,6 +45,9 @@ import {
   ChevronRight,
   CircuitBoard,
   Upload,
+  Bell,
+  Moon,
+  Sun,
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Print from 'expo-print';
@@ -56,6 +59,9 @@ export default function ProfileScreen() {
 
   const [userData, setUserData] = useState({ name: '', phone: '' });
   const [profilePhoto, setProfilePhoto] = useState('');
+
+  const [isDark, setIsDark] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const [nin, setNin] = useState('');
   const [ninVerified, setNinVerified] = useState(false);
@@ -115,6 +121,9 @@ export default function ProfileScreen() {
   const [idBackUri, setIdBackUri] = useState('');
   const [passportUri, setPassportUri] = useState('');
 
+  const [showAddTxModal, setShowAddTxModal] = useState(false);
+  const [txHashInput, setTxHashInput] = useState('');
+
   const providerOptions = ['Orange Money', 'Africell Money', 'Qcell Money'];
   const payMethodOptions = ['Orange Money', 'Africell Money', 'Qcell Money', 'Bank'];
   const payCategoryOptions = ['Osusu Group', 'Loan', 'Bank Transfer', 'Mobile Money'];
@@ -132,7 +141,7 @@ export default function ProfileScreen() {
     (async () => {
       console.log('[Profile] Loading stored data...');
       try {
-        const [storedUser, photo, storedNin, storedNinVerified, nok, sqa, wallets, banks, pay, mm, docs] = await Promise.all([
+        const [storedUser, photo, storedNin, storedNinVerified, nok, sqa, wallets, banks, pay, mm, docs, themeVal, notifs, chain] = await Promise.all([
           AsyncStorage.getItem('userData'),
           AsyncStorage.getItem('profilePhoto'),
           AsyncStorage.getItem('ninNumber'),
@@ -144,6 +153,9 @@ export default function ProfileScreen() {
           AsyncStorage.getItem('payments'),
           AsyncStorage.getItem('mobileMoney'),
           AsyncStorage.getItem('identityDocs'),
+          AsyncStorage.getItem('theme'),
+          AsyncStorage.getItem('notifications'),
+          AsyncStorage.getItem('chainLedger'),
         ]);
         if (storedUser) setUserData(JSON.parse(storedUser));
         if (photo) setProfilePhoto(photo);
@@ -184,6 +196,9 @@ export default function ProfileScreen() {
             setPassportUri(obj.passportUri || '');
           } catch {}
         }
+        if (themeVal) setIsDark(themeVal === 'dark');
+        if (notifs) setNotifications(JSON.parse(notifs));
+        if (chain) setChainLedger(JSON.parse(chain));
       } catch (err) {
         console.log('[Profile] Failed to load data', err);
       }
@@ -197,8 +212,17 @@ export default function ProfileScreen() {
 
   const loadLedger = useCallback(async () => {
     try {
-      const lg = await AsyncStorage.getItem('loanLedger');
-      setChainLedger(lg ? JSON.parse(lg) : []);
+      const lg = await AsyncStorage.getItem('chainLedger');
+      const parsed = lg ? JSON.parse(lg) : [];
+      const updated = parsed.map((e) => {
+        if (e.status === 'pending') {
+          const conf = Math.min(12, (e.confirmations || 0) + 1);
+          return { ...e, confirmations: conf, status: conf >= 12 ? 'confirmed' : 'pending' };
+        }
+        return e;
+      });
+      setChainLedger(updated);
+      await AsyncStorage.setItem('chainLedger', JSON.stringify(updated));
     } catch (e) {
       console.log('[Profile] load ledger error', e);
       setChainLedger([]);
@@ -411,11 +435,15 @@ export default function ProfileScreen() {
       setPayDate(new Date());
       setShowAddPaymentModal(false);
       Alert.alert('Saved', 'Payment recorded');
+      const notif = { id: `n-${Date.now()}`, kind: 'payment', title: 'Payment saved', body: `${formatCurrency(entry.amount)} • ${entry.category}`, ts: Date.now(), read: false };
+      const all = [notif, ...notifications];
+      setNotifications(all);
+      await AsyncStorage.setItem('notifications', JSON.stringify(all));
     } catch (e) {
       console.log('[Profile] Add payment error', e);
       Alert.alert('Error', 'Failed to add payment');
     }
-  }, [payAmountInput, payNoteInput, payDate, payMethodInput, payCategoryInput, payments]);
+  }, [payAmountInput, payNoteInput, payDate, payMethodInput, payCategoryInput, payments, notifications, formatCurrency]);
 
   const handleSavePaymentMethod = useCallback(async () => {
     const trimmed = mmNumber.trim();
@@ -563,40 +591,40 @@ export default function ProfileScreen() {
   }, []);
 
   const SectionRow = ({ icon, title, subtitle, onPress, right }) => (
-    <TouchableOpacity style={styles.row} onPress={onPress} testID={`row-${title}`}>
+    <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={onPress} testID={`row-${title}`}>
       <View style={styles.rowLeft}>
         <View>{icon}</View>
         <View style={styles.rowTextWrap}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.rowSubtitle}>{subtitle}</Text> : null}
+          <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>{subtitle}</Text> : null}
         </View>
       </View>
-      {right ? right : <ChevronRight color="#999" size={18} />}
+      {right ? right : <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />}
     </TouchableOpacity>
   );
 
   const Header = ({ title, onBack }) => (
-    <View style={styles.screenHeader}>
+    <View style={[styles.screenHeader, isDark && { backgroundColor: '#141a21' }]}>
       <TouchableOpacity onPress={onBack} style={styles.backBtn} testID="backBtn">
         <ArrowLeft color="#FFA500" size={24} />
       </TouchableOpacity>
-      <Text style={styles.screenTitle}>{title}</Text>
+      <Text style={[styles.screenTitle, isDark && { color: '#f2f2f2' }]}>{title}</Text>
       <View style={{ width: 24 }} />
     </View>
   );
 
   const renderOverview = () => (
     <ScrollView
-      contentContainerStyle={styles.scroll}
+      contentContainerStyle={[styles.scroll, isDark && { backgroundColor: '#0b0f14' }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
     >
-      <View style={styles.profileHeader}>
+      <View style={[styles.profileHeader, isDark && { backgroundColor: '#141a21' }]}>
         <View style={styles.avatarWrap}>
           {profilePhoto ? (
             <Image source={{ uri: profilePhoto }} style={styles.avatar} />
           ) : (
-            <View style={styles.avatarFallback}>
+            <View style={[styles.avatarFallback, isDark && { backgroundColor: '#22303c' }]}>
               <User color="#999" size={36} />
             </View>
           )}
@@ -606,8 +634,8 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userData.name || 'Your Name'}</Text>
-          <Text style={styles.profilePhone}>{maskPhone(userData.phone)}</Text>
+          <Text style={[styles.profileName, isDark && { color: '#f2f2f2' }]}>{userData.name || 'Your Name'}</Text>
+          <Text style={[styles.profilePhone, isDark && { color: '#b0b8bf' }]}>{maskPhone(userData.phone)}</Text>
           <TouchableOpacity style={styles.editMini} onPress={() => setScreen('edit')} testID="editProfileBtn">
             <Edit3 color="#FFA500" size={16} />
             <Text style={styles.editMiniText}>Edit Profile</Text>
@@ -615,19 +643,19 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <View style={styles.trustCard}>
+      <View style={[styles.trustCard, isDark && { backgroundColor: '#141a21' }]}>
         <View style={styles.trustHeader}>
           <ShieldCheck color="#4CAF50" size={20} />
-          <Text style={styles.trustTitle}>Level of Trust</Text>
+          <Text style={[styles.trustTitle, isDark && { color: '#e6e6e6' }]}>Level of Trust</Text>
         </View>
         <View style={styles.trustBarBg}>
           <View style={[styles.trustBarFill, { width: `${trustScore}%` }]} />
         </View>
-        <Text style={styles.trustScore}>{trustScore}% Complete</Text>
-        <Text style={styles.trustHint}>Complete your profile to increase trust and unlock features.</Text>
+        <Text style={[styles.trustScore, isDark && { color: '#d0d7de' }]}>{trustScore}% Complete</Text>
+        <Text style={[styles.trustHint, isDark && { color: '#93a1ad' }]}>Complete your profile to increase trust and unlock features.</Text>
       </View>
 
-      <View style={styles.sectionList}>
+      <View style={[styles.sectionList, isDark && { backgroundColor: '#141a21', borderColor: '#22303c' }]}>
         <SectionRow icon={<Gift color="#FFA500" size={20} />} title="Refer & Earn" onPress={() => setScreen('refer')} />
         <SectionRow icon={<ShieldCheck color="#5CCEF4" size={20} />} title="Verify your identity" onPress={() => setScreen('kyc')} right={(ninVerified && idFrontUri && idBackUri && passportUri) ? <Check color="#4CAF50" size={18} /> : null} />
         <SectionRow icon={<CreditCard color="#FFA500" size={20} />} title="Payment Method" onPress={() => setScreen('payment')} right={mmNumber ? <Check color="#4CAF50" size={18} /> : null} />
@@ -639,7 +667,30 @@ export default function ProfileScreen() {
         <SectionRow icon={<CreditCard color="#5CCEF4" size={20} />} title="Analytics & Reports" onPress={() => setScreen('reports')} />
         <SectionRow icon={<HelpCircle color="#5CCEF4" size={20} />} title="Offline Sync" onPress={() => setScreen('offline')} />
         <SectionRow icon={<HelpCircle color="#5CCEF4" size={20} />} title="Contact Us" onPress={() => setScreen('contact')} />
-        <SectionRow icon={<RefreshCw color="#5CCEF4" size={20} />} title="Check for Updates" subtitle={versionLabel} onPress={checkUpdates} right={loading ? <ActivityIndicator size="small" /> : <ChevronRight color="#999" size={18} />} />
+        <SectionRow icon={<RefreshCw color="#5CCEF4" size={20} />} title="Check for Updates" subtitle={versionLabel} onPress={checkUpdates} right={loading ? <ActivityIndicator size="small" /> : <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />} />
+        <View style={{ height: 8 }} />
+        <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={async () => {
+          const next = !isDark; setIsDark(next); await AsyncStorage.setItem('theme', next ? 'dark' : 'light');
+        }} testID="toggleDarkMode">
+          <View style={styles.rowLeft}>
+            <View>{isDark ? <Moon color="#FFA500" size={20} /> : <Sun color="#FFA500" size={20} />}</View>
+            <View style={styles.rowTextWrap}>
+              <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>Enable Dark Mode</Text>
+              <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>{isDark ? 'On' : 'Off'}</Text>
+            </View>
+          </View>
+          <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={() => setScreen('notifications')} testID="openNotifications">
+          <View style={styles.rowLeft}>
+            <View><Bell color="#5CCEF4" size={20} /></View>
+            <View style={styles.rowTextWrap}>
+              <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>Notifications</Text>
+              <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>{notifications.length} messages</Text>
+            </View>
+          </View>
+          <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} testID="logoutBtn">
@@ -651,14 +702,14 @@ export default function ProfileScreen() {
   );
 
   const renderEditProfile = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Edit Profile" onBack={() => setScreen('overview')} />
 
       <View style={styles.centerAvatarBlock}>
         {profilePhoto ? (
           <Image source={{ uri: profilePhoto }} style={styles.avatarLarge} />
         ) : (
-          <View style={styles.avatarLargeFallback}>
+          <View style={[styles.avatarLargeFallback, isDark && { backgroundColor: '#22303c' }]}>
             <User color="#999" size={48} />
           </View>
         )}
@@ -669,11 +720,12 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Full Name</Text>
-        <View style={styles.inputBox}>
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Full Name</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && { color: '#e6e6e6' }]}
             placeholder="Enter your full name"
+            placeholderTextColor={isDark ? '#6b7785' : '#999'}
             value={userData.name}
             onChangeText={(t) => setUserData({ ...userData, name: t })}
             returnKeyType="next"
@@ -684,11 +736,12 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Phone Number (12 characters)</Text>
-        <View style={styles.inputBox}>
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Phone Number (12 characters)</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && { color: '#e6e6e6' }]}
             placeholder="e.g., +23288000000"
+            placeholderTextColor={isDark ? '#6b7785' : '#999'}
             value={userData.phone}
             onChangeText={(t) => setUserData({ ...userData, phone: t })}
             keyboardType="phone-pad"
@@ -707,19 +760,20 @@ export default function ProfileScreen() {
   );
 
   const renderNIN = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="NIN Registration" onBack={() => setScreen('overview')} />
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Provide your National Identification Number (NIN). We only store it securely on your device.</Text>
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>Provide your National Identification Number (NIN). We only store it securely on your device.</Text>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>NIN (8 alphanumeric)</Text>
-        <View style={styles.inputBox}>
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>NIN (8 alphanumeric)</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDark && { color: '#e6e6e6' }]}
             placeholder="Enter your NIN"
+            placeholderTextColor={isDark ? '#6b7785' : '#999'}
             value={nin}
             onChangeText={(t)=>setNin(t.replace(/[^A-Za-z0-9]/g, ''))}
             maxLength={8}
@@ -744,20 +798,21 @@ export default function ProfileScreen() {
 
   const renderSecurity = () => (
     <View style={styles.flex1}>
-      <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+      <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <Header title="Security Questions" onBack={() => setScreen('overview')} />
 
         {[{ q: secQ1, a: secA1, setQ: setSecQ1, setA: setSecA1, which: 1 }, { q: secQ2, a: secA2, setQ: setSecQ2, setA: setSecA2, which: 2 }, { q: secQ3, a: secA3, setQ: setSecQ3, setA: setSecA3, which: 3 }].map((item, idx) => (
           <View key={idx} style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Question {idx + 1}</Text>
-            <TouchableOpacity style={styles.selector} onPress={() => setShowQuestionPicker({ which: item.which, visible: true })}>
-              <Text style={styles.selectorText}>{item.q}</Text>
-              <Text style={styles.selectorArrow}>▼</Text>
+            <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Question {idx + 1}</Text>
+            <TouchableOpacity style={[styles.selector, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => setShowQuestionPicker({ which: item.which, visible: true })}>
+              <Text style={[styles.selectorText, isDark && { color: '#e6e6e6' }]}>{item.q}</Text>
+              <Text style={[styles.selectorArrow, isDark && { color: '#93a1ad' }]}>▼</Text>
             </TouchableOpacity>
-            <View style={styles.inputBox}>
+            <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, isDark && { color: '#e6e6e6' }]}
                 placeholder="Your answer"
+                placeholderTextColor={isDark ? '#6b7785' : '#999'}
                 value={item.a}
                 onChangeText={item.setA}
                 returnKeyType="done"
@@ -801,38 +856,38 @@ export default function ProfileScreen() {
   );
 
   const renderNOK = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Next of Kin" onBack={() => setScreen('overview')} />
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Full Name</Text>
-        <View style={styles.inputBox}>
-          <TextInput style={styles.input} placeholder="Enter full name" value={nokName} onChangeText={setNokName} blurOnSubmit={false} testID="nokName" />
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Full Name</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, isDark && { color: '#e6e6e6' }]} placeholder="Enter full name" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={nokName} onChangeText={setNokName} blurOnSubmit={false} testID="nokName" />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Relationship</Text>
-        <TouchableOpacity style={styles.selector} onPress={() => Alert.alert('Relationship', 'Enter relationship in the next field if needed.')}> 
-          <Text style={styles.selectorText}>{nokRelationship}</Text>
-          <Text style={styles.selectorArrow}>▼</Text>
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Relationship</Text>
+        <TouchableOpacity style={[styles.selector, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => Alert.alert('Relationship', 'Enter relationship in the next field if needed.')}> 
+          <Text style={[styles.selectorText, isDark && { color: '#e6e6e6' }]}>{nokRelationship}</Text>
+          <Text style={[styles.selectorArrow, isDark && { color: '#93a1ad' }]}>▼</Text>
         </TouchableOpacity>
-        <View style={styles.inputBox}>
-          <TextInput style={styles.input} placeholder="e.g., Sibling, Parent, Friend" value={nokRelationship} onChangeText={setNokRelationship} blurOnSubmit={false} testID="nokRelationship" />
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, isDark && { color: '#e6e6e6' }]} placeholder="e.g., Sibling, Parent, Friend" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={nokRelationship} onChangeText={setNokRelationship} blurOnSubmit={false} testID="nokRelationship" />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Phone (12 characters)</Text>
-        <View style={styles.inputBox}>
-          <TextInput style={styles.input} placeholder="e.g., +23288000000" value={nokPhone} onChangeText={setNokPhone} keyboardType="phone-pad" maxLength={12} returnKeyType="done" blurOnSubmit={false} testID="nokPhone" />
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Phone (12 characters)</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, isDark && { color: '#e6e6e6' }]} placeholder="e.g., +23288000000" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={nokPhone} onChangeText={setNokPhone} keyboardType="phone-pad" maxLength={12} returnKeyType="done" blurOnSubmit={false} testID="nokPhone" />
         </View>
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Address</Text>
-        <View style={styles.inputBox}>
-          <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} placeholder="Enter address" value={nokAddress} onChangeText={setNokAddress} multiline numberOfLines={3} blurOnSubmit={false} testID="nokAddress" />
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Address</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }, isDark && { color: '#e6e6e6' }]} placeholder="Enter address" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={nokAddress} onChangeText={setNokAddress} multiline numberOfLines={3} blurOnSubmit={false} testID="nokAddress" />
         </View>
       </View>
 
@@ -843,15 +898,15 @@ export default function ProfileScreen() {
   );
 
   const renderRefer = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Refer & Earn" onBack={() => setScreen('overview')} />
 
-      <View style={styles.refCard}>
+      <View style={[styles.refCard, isDark && { backgroundColor: '#141a21' }]}>
         <Gift color="#FFA500" size={28} />
-        <Text style={styles.refTitle}>Invite friends and earn rewards</Text>
-        <Text style={styles.refSubtitle}>Share your code and get bonuses when your friends join MegaSafe.</Text>
+        <Text style={[styles.refTitle, isDark && { color: '#e6e6e6' }]}>Invite friends and earn rewards</Text>
+        <Text style={[styles.refSubtitle, isDark && { color: '#93a1ad' }]}>Share your code and get bonuses when your friends join MegaSafe.</Text>
 
-        <View style={styles.codeBox}>
+        <View style={[styles.codeBox, isDark && { backgroundColor: '#0f141a', borderColor: '#FFA500' }]}>
           <Text style={styles.codeText}>{userData.phone || 'MS123456789012'}</Text>
         </View>
 
@@ -870,21 +925,21 @@ export default function ProfileScreen() {
   );
 
   const renderLinked = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Linked Wallets & Banks" onBack={() => setScreen('overview')} />
 
-      <Text style={styles.sectionHeader}>Wallets</Text>
+      <Text style={[styles.sectionHeader, isDark && { color: '#e6e6e6' }]}>Wallets</Text>
       {linkedWallets.length === 0 ? (
         <View style={styles.emptyState}>
           <Wallet color="#ccc" size={40} />
           <Text style={styles.emptyText}>No wallets linked</Text>
         </View>
       ) : (
-        <View style={styles.listCard}>
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
           {linkedWallets.map((w) => (
             <View key={w.id} style={styles.listRow}>
               <Wallet color="#5CCEF4" size={18} />
-              <Text style={styles.listText}>{maskAddress(w.address)}</Text>
+              <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{maskAddress(w.address)}</Text>
               <TouchableOpacity style={styles.removeChip} onPress={async () => {
                 const updated = linkedWallets.filter((x) => x.id !== w.id);
                 await AsyncStorage.setItem('linkedWallets', JSON.stringify(updated));
@@ -901,18 +956,18 @@ export default function ProfileScreen() {
         <Text style={styles.primaryBtnText}>Add Wallet</Text>
       </TouchableOpacity>
 
-      <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Banks</Text>
+      <Text style={[styles.sectionHeader, { marginTop: 24 }, isDark && { color: '#e6e6e6' }]}>Banks</Text>
       {linkedBanks.length === 0 ? (
         <View style={styles.emptyState}>
           <Banknote color="#ccc" size={40} />
           <Text style={styles.emptyText}>No banks linked</Text>
         </View>
       ) : (
-        <View style={styles.listCard}>
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
           {linkedBanks.map((b) => (
             <View key={b.id} style={styles.listRow}>
               <Banknote color="#FFA500" size={18} />
-              <Text style={styles.listText}>{b.bank} • {maskAcct(b.number)}</Text>
+              <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{b.bank} • {maskAcct(b.number)}</Text>
               <TouchableOpacity style={styles.removeChip} onPress={async () => {
                 const updated = linkedBanks.filter((x) => x.id !== b.id);
                 await AsyncStorage.setItem('linkedBanks', JSON.stringify(updated));
@@ -934,13 +989,13 @@ export default function ProfileScreen() {
   const renderPayments = () => {
     const total = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     return (
-      <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+      <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <Header title="Your Payments" onBack={() => setScreen('overview')} />
 
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, isDark && { backgroundColor: '#141a21' }]}>
           <CreditCard color="#5CCEF4" size={24} />
-          <Text style={styles.summaryAmount}>{formatCurrency(total)}</Text>
-          <Text style={styles.summaryLabel}>Total Recorded</Text>
+          <Text style={[styles.summaryAmount, isDark && { color: '#e6e6e6' }]}>{formatCurrency(total)}</Text>
+          <Text style={[styles.summaryLabel, isDark && { color: '#93a1ad' }]}>Total Recorded</Text>
         </View>
 
         {payments.length === 0 ? (
@@ -949,17 +1004,17 @@ export default function ProfileScreen() {
             <Text style={styles.emptyText}>No payments yet</Text>
           </View>
         ) : (
-          <View style={styles.listCard}>
+          <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
             {payments.map((p) => (
               <View key={p.id} style={styles.listRowBetween}>
                 <View style={styles.rowLeft}>
                   <CreditCard color="#FFA500" size={18} />
                   <View>
-                    <Text style={styles.listText}>{p.note || 'Payment'} • {p.category || 'General'}</Text>
+                    <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{p.note || 'Payment'} • {p.category || 'General'}</Text>
                     <Text style={styles.smallMuted}>{new Date(p.date).toLocaleDateString()} • {p.method || 'Method'} • {p.receipt || ''}</Text>
                   </View>
                 </View>
-                <Text style={styles.bold}>{formatCurrency(p.amount)}</Text>
+                <Text style={[styles.bold, isDark && { color: '#e6e6e6' }]}>{formatCurrency(p.amount)}</Text>
               </View>
             ))}
           </View>
@@ -1013,10 +1068,10 @@ export default function ProfileScreen() {
     };
 
     return (
-      <ScrollView contentContainerStyle={styles.formWrap}>
+      <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]}>
         <Header title="Offline Sync" onBack={() => setScreen('overview')} />
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>Queue payments when offline and sync later. Choose automatic or manual from here.</Text>
+        <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+          <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>Queue payments when offline and sync later. Choose automatic or manual from here.</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity style={styles.primaryBtn} onPress={toggleMode} testID="toggleOfflineMode">
@@ -1026,8 +1081,8 @@ export default function ProfileScreen() {
             <Text style={styles.secondaryBtnText}>Sync Now</Text>
           </TouchableOpacity>
         </View>
-        <Text style={[styles.sectionHeader, { marginTop: 16 }]}>Outbox</Text>
-        <View style={styles.listCard}>
+        <Text style={[styles.sectionHeader, { marginTop: 16 }, isDark && { color: '#e6e6e6' }]}>Outbox</Text>
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
           {outbox.length === 0 ? (
             <Text style={styles.smallMuted}>No pending items</Text>
           ) : (
@@ -1035,7 +1090,7 @@ export default function ProfileScreen() {
               <View key={i.payload?.id} style={styles.listRowBetween}>
                 <View style={styles.rowLeft}>
                   <CreditCard color="#FFA500" size={18} />
-                  <Text style={styles.listText}>{i.payload?.note || 'Payment'} • {new Date(i.payload?.date).toLocaleString()}</Text>
+                  <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{i.payload?.note || 'Payment'} • {new Date(i.payload?.date).toLocaleString()}</Text>
                 </View>
                 <Text style={styles.bold}>NLe {(i.payload?.amount||0).toFixed(2)}</Text>
               </View>
@@ -1047,44 +1102,44 @@ export default function ProfileScreen() {
   };
 
   const renderContact = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Contact Us" onBack={() => setScreen('overview')} />
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>We are here to help. Choose a contact method below.</Text>
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>We are here to help. Choose a contact method below.</Text>
       </View>
 
-      <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('mailto:support@megasafe.app')} testID="emailUs">
+      <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={() => Linking.openURL('mailto:support@megasafe.app')} testID="emailUs">
         <View style={styles.rowLeft}>
           <Mail color="#5CCEF4" size={20} />
           <View style={styles.rowTextWrap}>
-            <Text style={styles.rowTitle}>Email</Text>
-            <Text style={styles.rowSubtitle}>support@megasafe.app</Text>
+            <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>Email</Text>
+            <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>support@megasafe.app</Text>
           </View>
         </View>
-        <ChevronRight color="#999" size={18} />
+        <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('tel:+23288000000')} testID="callUs">
+      <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={() => Linking.openURL('tel:+23288000000')} testID="callUs">
         <View style={styles.rowLeft}>
           <PhoneIcon color="#FFA500" size={20} />
           <View style={styles.rowTextWrap}>
-            <Text style={styles.rowTitle}>Phone</Text>
-            <Text style={styles.rowSubtitle}>+232 88 000000</Text>
+            <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>Phone</Text>
+            <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>+232 88 000000</Text>
           </View>
         </View>
-        <ChevronRight color="#999" size={18} />
+        <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.row} onPress={() => Linking.openURL('https://wa.me/23288000000')} testID="whatsappUs">
+      <TouchableOpacity style={[styles.row, isDark && { borderBottomColor: '#22303c' }]} onPress={() => Linking.openURL('https://wa.me/23288000000')} testID="whatsappUs">
         <View style={styles.rowLeft}>
           <Contact color="#25D366" size={20} />
           <View style={styles.rowTextWrap}>
-            <Text style={styles.rowTitle}>WhatsApp</Text>
-            <Text style={styles.rowSubtitle}>Chat with support</Text>
+            <Text style={[styles.rowTitle, isDark && { color: '#e6e6e6' }]}>WhatsApp</Text>
+            <Text style={[styles.rowSubtitle, isDark && { color: '#93a1ad' }]}>Chat with support</Text>
           </View>
         </View>
-        <ChevronRight color="#999" size={18} />
+        <ChevronRight color={isDark ? '#93a1ad' : '#999'} size={18} />
       </TouchableOpacity>
     </ScrollView>
   );
@@ -1148,27 +1203,27 @@ export default function ProfileScreen() {
     };
 
     return (
-      <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+      <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
         <Header title="Analytics & Reports" onBack={() => setScreen('overview')} />
 
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, isDark && { backgroundColor: '#141a21' }]}>
           <CreditCard color="#5CCEF4" size={24} />
-          <Text style={styles.summaryAmount}>{formatCurrency(overall)}</Text>
-          <Text style={styles.summaryLabel}>In selected range</Text>
+          <Text style={[styles.summaryAmount, isDark && { color: '#e6e6e6' }]}>{formatCurrency(overall)}</Text>
+          <Text style={[styles.summaryLabel, isDark && { color: '#93a1ad' }]}>In selected range</Text>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Start Date</Text>
-          <TouchableOpacity style={styles.selector} onPress={() => setShowReportStartPicker(true)} testID="openReportStart">
-            <Text style={styles.selectorText}>{new Date(reportStart).toDateString()}</Text>
-            <Text style={styles.selectorArrow}>📅</Text>
+          <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Start Date</Text>
+          <TouchableOpacity style={[styles.selector, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => setShowReportStartPicker(true)} testID="openReportStart">
+            <Text style={[styles.selectorText, isDark && { color: '#e6e6e6' }]}>{new Date(reportStart).toDateString()}</Text>
+            <Text style={[styles.selectorArrow, isDark && { color: '#93a1ad' }]}>📅</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>End Date</Text>
-          <TouchableOpacity style={styles.selector} onPress={() => setShowReportEndPicker(true)} testID="openReportEnd">
-            <Text style={styles.selectorText}>{new Date(reportEnd).toDateString()}</Text>
-            <Text style={styles.selectorArrow}>📅</Text>
+          <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>End Date</Text>
+          <TouchableOpacity style={[styles.selector, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => setShowReportEndPicker(true)} testID="openReportEnd">
+            <Text style={[styles.selectorText, isDark && { color: '#e6e6e6' }]}>{new Date(reportEnd).toDateString()}</Text>
+            <Text style={[styles.selectorArrow, isDark && { color: '#93a1ad' }]}>📅</Text>
           </TouchableOpacity>
         </View>
 
@@ -1178,17 +1233,17 @@ export default function ProfileScreen() {
             <Text style={styles.emptyText}>No transactions in this range</Text>
           </View>
         ) : (
-          <View style={styles.listCard}>
+          <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
             {filtered.map((p)=> (
               <View key={`rp-${p.id}`} style={styles.listRowBetween}>
                 <View style={styles.rowLeft}>
                   <CreditCard color="#FFA500" size={18} />
                   <View>
-                    <Text style={styles.listText}>{p.category || 'General'} • {p.method || ''}</Text>
+                    <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{p.category || 'General'} • {p.method || ''}</Text>
                     <Text style={styles.smallMuted}>{new Date(p.date).toLocaleDateString()} • {p.receipt || ''}</Text>
                   </View>
                 </View>
-                <Text style={styles.bold}>{formatCurrency(p.amount)}</Text>
+                <Text style={[styles.bold, isDark && { color: '#e6e6e6' }]}>{formatCurrency(p.amount)}</Text>
               </View>
             ))}
           </View>
@@ -1207,25 +1262,25 @@ export default function ProfileScreen() {
   };
 
   const renderPaymentMethod = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Payment Method" onBack={() => setScreen('overview')} />
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Add your Mobile Money details used to pay group contributions. Supported: Orange Money, Africell Money, Qcell Money.</Text>
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>Add your Mobile Money details used to pay group contributions. Supported: Orange Money, Africell Money, Qcell Money.</Text>
       </View>
 
-      <Text style={styles.sectionHeader}>Provider</Text>
+      <Text style={[styles.sectionHeader, isDark && { color: '#e6e6e6' }]}>Provider</Text>
       {providerOptions.map((p) => (
-        <TouchableOpacity key={p} style={[styles.selector, mmProvider === p && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={() => setMmProvider(p)} testID={`mmProvider-${p.replace(/\s/g,'')}`}>
-          <Text style={styles.selectorText}>{p}</Text>
-          {mmProvider === p ? <Check color="#FFA500" size={18} /> : <Text style={styles.selectorArrow}>▼</Text>}
+        <TouchableOpacity key={p} style={[styles.selector, mmProvider === p && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }, isDark && { backgroundColor: '#0f141a', borderColor: mmProvider === p ? '#FFA500' : '#22303c' }]} onPress={() => setMmProvider(p)} testID={`mmProvider-${p.replace(/\s/g,'')}`}>
+          <Text style={[styles.selectorText, isDark && { color: '#e6e6e6' }]}>{p}</Text>
+          {mmProvider === p ? <Check color="#FFA500" size={18} /> : <Text style={[styles.selectorArrow, isDark && { color: '#93a1ad' }]}>▼</Text>}
         </TouchableOpacity>
       ))}
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Mobile Money Number (12 characters)</Text>
-        <View style={styles.inputBox}>
-          <TextInput style={styles.input} placeholder="e.g., +23288000000" value={mmNumber} onChangeText={setMmNumber} keyboardType="phone-pad" maxLength={12} blurOnSubmit={false} testID="mmInput" />
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>Mobile Money Number (12 characters)</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, isDark && { color: '#e6e6e6' }]} placeholder="e.g., +23288000000" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={mmNumber} onChangeText={setMmNumber} keyboardType="phone-pad" maxLength={12} blurOnSubmit={false} testID="mmInput" />
         </View>
       </View>
 
@@ -1236,25 +1291,25 @@ export default function ProfileScreen() {
   );
 
   const renderChain = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Security Blockchain" onBack={() => setScreen('overview')} />
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Connect your crypto wallet and review the secure blockchain audit trail of transactions.</Text>
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>Connect your crypto wallet and review the secure blockchain audit trail of transactions.</Text>
       </View>
 
-      <Text style={styles.sectionHeader}>Crypto Connections</Text>
+      <Text style={[styles.sectionHeader, isDark && { color: '#e6e6e6' }]}>Crypto Connections</Text>
       {linkedWallets.length === 0 ? (
         <View style={styles.emptyState}>
           <Wallet color="#ccc" size={40} />
           <Text style={styles.emptyText}>No wallets linked</Text>
         </View>
       ) : (
-        <View style={styles.listCard}>
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
           {linkedWallets.map((w) => (
             <View key={`cw-${w.id}`} style={styles.listRow}>
               <Wallet color="#5CCEF4" size={18} />
-              <Text style={styles.listText}>{maskAddress(w.address)}</Text>
+              <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{maskAddress(w.address)}</Text>
             </View>
           ))}
         </View>
@@ -1269,20 +1324,21 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Blockchain Audit Trail</Text>
+      <Text style={[styles.sectionHeader, { marginTop: 24 }, isDark && { color: '#e6e6e6' }]}>Blockchain Audit Trail</Text>
       {chainLedger.length === 0 ? (
         <View style={styles.emptyState}>
           <CircuitBoard color="#ccc" size={40} />
           <Text style={styles.emptyText}>No entries yet</Text>
         </View>
       ) : (
-        <View style={styles.listCard}>
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
           {chainLedger.slice().reverse().map((e) => (
             <View key={`lg-${e.id}`} style={styles.listRow}>
               <CircuitBoard color="#FFA500" size={18} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.listText}>{e.type}</Text>
+                <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{e.type}</Text>
                 <Text style={styles.smallMuted}>Hash: {e.hash}</Text>
+                <Text style={styles.smallMuted}>Status: {e.status || 'pending'} • Confirmations: {e.confirmations ?? 0}/12</Text>
                 <Text style={styles.smallMuted}>Prev: {e.prev}</Text>
                 <Text style={styles.smallMuted}>Time: {new Date(e.ts).toLocaleString()}</Text>
               </View>
@@ -1291,9 +1347,14 @@ export default function ProfileScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.primaryBtn} onPress={loadLedger} testID="refreshLedgerBtn">
-        <Text style={styles.primaryBtnText}>Refresh</Text>
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowAddTxModal(true)} testID="addTxHashBtn">
+          <Text style={styles.secondaryBtnText}>Add Tx Hash</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.primaryBtn} onPress={loadLedger} testID="refreshLedgerBtn">
+          <Text style={styles.primaryBtnText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 
@@ -1317,24 +1378,24 @@ export default function ProfileScreen() {
   }, [nin, idFrontUri, idBackUri, passportUri]);
 
   const renderKYC = () => (
-    <ScrollView contentContainerStyle={styles.formWrap} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}>
       <Header title="Verify your identity" onBack={() => setScreen('overview')} />
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>National Identification Number (NIN)</Text>
-        <View style={styles.inputBox}>
-          <TextInput style={styles.input} placeholder="Enter  your NIN" value={nin} onChangeText={(t)=>setNin(t.replace(/[^A-Za-z0-9]/g,''))} maxLength={8} returnKeyType="done" blurOnSubmit={false} testID="kycNinInput" />
+        <Text style={[styles.inputLabel, isDark && { color: '#e6e6e6' }]}>National Identification Number (NIN)</Text>
+        <View style={[styles.inputBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]}>
+          <TextInput style={[styles.input, isDark && { color: '#e6e6e6' }]} placeholder="Enter  your NIN" placeholderTextColor={isDark ? '#6b7785' : '#999'} value={nin} onChangeText={(t)=>setNin(t.replace(/[^A-Za-z0-9]/g,''))} maxLength={8} returnKeyType="done" blurOnSubmit={false} testID="kycNinInput" />
         </View>
       </View>
 
-      <Text style={[styles.inputLabel, { marginTop: 4 }]}>Upload your documents</Text>
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>Please upload clear photos of your National ID (front and back) and a Passport Photo.</Text>
+      <Text style={[styles.inputLabel, { marginTop: 4 }, isDark && { color: '#e6e6e6' }]}>Upload your documents</Text>
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>Please upload clear photos of your National ID (front and back) and a Passport Photo.</Text>
       </View>
 
-      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('front')} testID="uploadFront">
+      <TouchableOpacity style={[styles.uploadBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => pickDocImage('front')} testID="uploadFront">
         <Upload color="#333" size={28} />
-        <Text style={styles.uploadText}>{idFrontUri ? 'Replace Front of ID Card' : 'Upload Front of ID Card'}</Text>
+        <Text style={[styles.uploadText, isDark && { color: '#e6e6e6' }]}>{idFrontUri ? 'Replace Front of ID Card' : 'Upload Front of ID Card'}</Text>
       </TouchableOpacity>
       {idFrontUri ? (
         <View style={styles.previewWrap}>
@@ -1343,9 +1404,9 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('back')} testID="uploadBack">
+      <TouchableOpacity style={[styles.uploadBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => pickDocImage('back')} testID="uploadBack">
         <Upload color="#333" size={28} />
-        <Text style={styles.uploadText}>{idBackUri ? 'Replace Back of ID Card' : 'Upload Back of ID Card'}</Text>
+        <Text style={[styles.uploadText, isDark && { color: '#e6e6e6' }]}>{idBackUri ? 'Replace Back of ID Card' : 'Upload Back of ID Card'}</Text>
       </TouchableOpacity>
       {idBackUri ? (
         <View style={styles.previewWrap}>
@@ -1354,9 +1415,9 @@ export default function ProfileScreen() {
         </View>
       ) : null}
 
-      <TouchableOpacity style={styles.uploadBox} onPress={() => pickDocImage('passport')} testID="uploadPassport">
+      <TouchableOpacity style={[styles.uploadBox, isDark && { backgroundColor: '#0f141a', borderColor: '#22303c' }]} onPress={() => pickDocImage('passport')} testID="uploadPassport">
         <Upload color="#333" size={28} />
-        <Text style={styles.uploadText}>{passportUri ? 'Replace Passport Photo' : 'Upload Passport Photo'}</Text>
+        <Text style={[styles.uploadText, isDark && { color: '#e6e6e6' }]}>{passportUri ? 'Replace Passport Photo' : 'Upload Passport Photo'}</Text>
       </TouchableOpacity>
       {passportUri ? (
         <View style={styles.previewWrap}>
@@ -1368,6 +1429,66 @@ export default function ProfileScreen() {
       <TouchableOpacity style={[styles.primaryBtn, { marginTop: 24 }]} onPress={handleSaveKYC} testID="saveKycBtn">
         <Text style={styles.primaryBtnText}>Save</Text>
       </TouchableOpacity>
+    </ScrollView>
+  );
+
+  const renderNotifications = () => (
+    <ScrollView contentContainerStyle={[styles.formWrap, isDark && { backgroundColor: '#0b0f14' }]} keyboardShouldPersistTaps="handled">
+      <Header title="Notifications" onBack={() => setScreen('overview')} />
+      <View style={[styles.infoCard, isDark && { backgroundColor: '#141a21' }]}>
+        <Text style={[styles.infoText, isDark && { color: '#d0d7de' }]}>In-app reminders for payments, approvals, and alerts.</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={async () => {
+          const n = { id: `n-${Date.now()}`, kind: 'reminder', title: 'Contribution due', body: 'Your group contribution is due today.', ts: Date.now(), read: false };
+          const all = [n, ...notifications];
+          setNotifications(all);
+          await AsyncStorage.setItem('notifications', JSON.stringify(all));
+        }} testID="addReminder">
+          <Text style={styles.secondaryBtnText}>Add Reminder</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.primaryBtn} onPress={async () => {
+          const unread = notifications.filter(n => !n.read).length;
+          const marked = notifications.map(n => ({ ...n, read: true }));
+          setNotifications(marked);
+          await AsyncStorage.setItem('notifications', JSON.stringify(marked));
+          Alert.alert('Done', unread === 0 ? 'No unread notifications' : `Marked ${unread} as read`);
+        }} testID="markAllRead">
+          <Text style={styles.primaryBtnText}>Mark all read</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondaryBtn} onPress={async () => { setNotifications([]); await AsyncStorage.setItem('notifications', JSON.stringify([])); }} testID="clearAllNotifs">
+          <Text style={styles.secondaryBtnText}>Clear</Text>
+        </TouchableOpacity>
+      </View>
+      {notifications.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Bell color="#ccc" size={40} />
+          <Text style={styles.emptyText}>No notifications</Text>
+        </View>
+      ) : (
+        <View style={[styles.listCard, isDark && { backgroundColor: '#141a21' }]}>
+          {notifications.map((n) => (
+            <View key={n.id} style={styles.listRowBetween}>
+              <View style={styles.rowLeft}>
+                <Bell color={n.read ? '#93a1ad' : '#FFA500'} size={18} />
+                <View>
+                  <Text style={[styles.listText, isDark && { color: '#e6e6e6' }]}>{n.title}</Text>
+                  <Text style={styles.smallMuted}>{new Date(n.ts).toLocaleString()} • {n.body}</Text>
+                </View>
+              </View>
+              {n.read ? <Text style={styles.smallMuted}>Read</Text> : (
+                <TouchableOpacity onPress={async ()=>{
+                  const updated = notifications.map(x => x.id === n.id ? { ...x, read: true } : x);
+                  setNotifications(updated);
+                  await AsyncStorage.setItem('notifications', JSON.stringify(updated));
+                }}>
+                  <Text style={{ color: '#1877F2', fontWeight: '700' }}>Mark read</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 
@@ -1399,13 +1520,15 @@ export default function ProfileScreen() {
         return renderReports();
       case 'offline':
         return <OfflineScreen />;
+      case 'notifications':
+        return renderNotifications();
       default:
         return renderOverview();
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, isDark && { backgroundColor: '#0b0f14' }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex1}
@@ -1640,6 +1763,40 @@ export default function ProfileScreen() {
         onClose={() => setShowReportEndPicker(false)}
         onSelect={(d) => { setReportEnd(d); setShowReportEndPicker(false); }}
       />
+
+      <Modal visible={showAddTxModal} transparent animationType="fade" onRequestClose={() => setShowAddTxModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Transaction Hash</Text>
+              <TouchableOpacity onPress={() => setShowAddTxModal(false)}>
+                <X color="#666" size={22} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Hash</Text>
+              <View style={styles.inputBox}>
+                <TextInput value={txHashInput} onChangeText={setTxHashInput} autoCapitalize="none" placeholder="0x..." style={styles.input} testID="txHashInput" />
+              </View>
+            </View>
+            <TouchableOpacity style={styles.primaryBtn} onPress={async ()=>{
+              const h = txHashInput.trim();
+              if (!h || h.length < 8) { Alert.alert('Invalid','Enter a valid hash'); return; }
+              try {
+                const entry = { id: Date.now().toString(), type: 'transaction', hash: h, prev: chainLedger[chainLedger.length-1]?.hash || '-', ts: Date.now(), confirmations: 0, status: 'pending' };
+                const updated = [...chainLedger, entry];
+                await AsyncStorage.setItem('chainLedger', JSON.stringify(updated));
+                setChainLedger(updated);
+                setTxHashInput('');
+                setShowAddTxModal(false);
+                Alert.alert('Added','Transaction tracked');
+              } catch (e) { console.log('[Chain] add tx', e); }
+            }} testID="confirmAddTx">
+              <Text style={styles.primaryBtnText}>Track Transaction</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
