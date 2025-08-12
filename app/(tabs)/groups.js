@@ -1647,9 +1647,14 @@ export default function GroupsScreen() {
                 style={[styles.createButton, styles.detailButton, { flex: 1 }]}
                 onPress={async () => {
                   try {
-                    const msg = `Join our Osusu group "${g.name}" in the app. Search and request to join.`;
+                    let inviteUrl = '';
+                    try {
+                      const Linking = await import('expo-linking');
+                      inviteUrl = Linking.createURL(`/groups/invite?groupId=${encodeURIComponent(g.id)}`);
+                    } catch (e) { console.log('create invite url', e); }
+                    const msg = `Join our Osusu group "${g.name}". Tap to open: ${inviteUrl || ''}`.trim();
                     if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.share) {
-                      await navigator.share({ title: 'Osusu Invite', text: msg });
+                      await navigator.share({ title: 'Osusu Invite', text: msg, url: inviteUrl || undefined });
                     } else {
                       await Share.share({ message: msg });
                     }
@@ -1657,7 +1662,7 @@ export default function GroupsScreen() {
                 }}
                 testID="sendInviteLink"
               >
-                <Text style={[styles.createButtonText, styles.detailButtonText]}>invite or share</Text>
+                <Text style={[styles.createButtonText, styles.detailButtonText]}>invite</Text>
               </TouchableOpacity>
             </View>
           </View>
