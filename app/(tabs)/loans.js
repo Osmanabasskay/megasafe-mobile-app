@@ -1016,23 +1016,6 @@ export default function LoansScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Groups</Text>
-          {groups.length === 0 ? (
-            <View style={styles.infoCard}><Text style={styles.muted}>No groups available</Text></View>
-          ) : (
-            groups.map((g) => (
-              <View key={g.id} style={styles.groupItem}>
-                <View style={styles.rowLeft}>
-                  <View style={styles.groupIconWrap}>
-                    <Users color="#333" size={18} />
-                  </View>
-                  <Text style={styles.listText}>{g.name}</Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Details</Text>
