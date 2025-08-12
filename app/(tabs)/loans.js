@@ -1150,6 +1150,16 @@ export default function LoansScreen() {
                 await saveAccounts(next);
                 await addLedger('loan-account-created', { id, type: accountType, ownerId: userId });
                 setAccountErrors({});
+                setAccountForm({
+                  fullName: '', nin: '', idFrontUrl: '', idBackUrl: '', passportUrl: '', address: '', phone: '', email: '',
+                  institutionName: '', headOfficeAddress: '', ceoName: '', ceoNin: '', ceoIdFrontUrl: '', ceoIdBackUrl: '', ceoPassportUrl: '',
+                  branchAddress: '', branchManagerName: '', branchManagerNin: '', branchManagerIdFrontUrl: '', branchManagerIdBackUrl: '', branchManagerPassportUrl: '',
+                  certificate1Url: '', certificate2Url: '',
+                  orgName: '', officeAddress: '', leaderName: '', leaderNin: '', leaderIdFrontUrl: '', leaderIdBackUrl: '', leaderPassportUrl: '',
+                  creatorRole: '', creatorName: '', creatorNin: '', creatorIdFrontUrl: '', creatorIdBackUrl: '', creatorPassportUrl: '',
+                  orgKind: 'NGO',
+                });
+                setView('accounts');
                 Alert.alert('Created', 'Loan account saved');
               } catch(e) {
                 console.log('[Loans] acct create error', e);
