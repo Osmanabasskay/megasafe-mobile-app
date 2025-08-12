@@ -231,7 +231,7 @@ export default function LoansScreen() {
   const requestLoan = useCallback(async () => {
     if (!agreedTerms) { Alert.alert('Agreement Required', 'You must agree to the terms and conditions before submitting'); return; }
     const a = parseFloat(amount);
-    if (trustScore < 100) { Alert.alert('Not eligible', 'Complete your Trust to 100% to request a loan'); return; }
+    console.log('[Loans] requestLoan pressed', { agreedTerms, trustScore, amount, purpose });
     if (isNaN(a) || a <= 0) { Alert.alert('Invalid', 'Enter a valid amount'); return; }
     if (a > maxLoan) { Alert.alert('Limit', `Amount exceeds your limit of ${formatCurrency(maxLoan)}`); return; }
     if (!purpose.trim()) { Alert.alert('Required', 'Enter a purpose'); return; }
@@ -542,7 +542,7 @@ export default function LoansScreen() {
             <Text style={styles.checkboxLabel}>I have read and agree to the Terms & Conditions</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={loading || !agreedTerms} testID="submitLoanRequest">
+          <TouchableOpacity style={styles.primaryBtn} onPress={requestLoan} disabled={!agreedTerms} testID="submitLoanRequest">
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Submit Request</Text>}
           </TouchableOpacity>
         </ScrollView>
