@@ -995,16 +995,43 @@ export default function LoansScreen() {
 
   const renderAccounts = () => (
     <SafeAreaView style={styles.container}>
-      {renderHeader('Loan Accounts', () => setView('home'))}
+      {renderHeader('Loan Account Type', () => setView('home'))}
       <ScrollView style={styles.scroll}>
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Type</Text>
-          {['individual','mfi','organization'].map((t)=> (
-            <TouchableOpacity key={t} style={[styles.selector, accountType===t && { backgroundColor: '#fff5e6', borderColor: '#FFA500' }]} onPress={()=>setAccountType(t)} testID={`acctType-${t}`}>
-              <Text style={styles.selectorText}>{t==='individual' ? 'Individual/Personal' : t==='mfi' ? 'Microfinance Institution' : 'Organization (NGO/CBO/Social Club)'}</Text>
-              {accountType===t ? <Check color="#FFA500" size={18} /> : <Text style={styles.selectorArrow}>▼</Text>}
-            </TouchableOpacity>
-          ))}
+        <View style={[styles.card, { paddingVertical: 16 }]}>
+          <View style={styles.tabRow}>
+            {[
+              { key: 'individual', label: 'Individual' },
+              { key: 'mfi', label: 'Microfinance' },
+              { key: 'organization', label: 'Organisation' },
+            ].map((t) => (
+              <TouchableOpacity
+                key={t.key}
+                style={[styles.tabBtn, accountType === t.key && styles.tabBtnActive]}
+                onPress={() => setAccountType(t.key)}
+                testID={`acctTab-${t.key}`}
+              >
+                <Text style={[styles.tabText, accountType === t.key && styles.tabTextActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Groups</Text>
+          {groups.length === 0 ? (
+            <View style={styles.infoCard}><Text style={styles.muted}>No groups available</Text></View>
+          ) : (
+            groups.map((g) => (
+              <View key={g.id} style={styles.groupItem}>
+                <View style={styles.rowLeft}>
+                  <View style={styles.groupIconWrap}>
+                    <Users color="#333" size={18} />
+                  </View>
+                  <Text style={styles.listText}>{g.name}</Text>
+                </View>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.card}>
@@ -1131,9 +1158,17 @@ export default function LoansScreen() {
             }}
             testID="saveAccountBtn"
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Save Account</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Create Account</Text>}
           </TouchableOpacity>
         </LinearGradient>
+
+        <TouchableOpacity
+          style={styles.applyBtnDisabled}
+          onPress={() => setView('request')}
+          testID="applyForLoanBtn"
+        >
+          <Text style={styles.applyBtnText}>Apply for Loan</Text>
+        </TouchableOpacity>
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>My Accounts</Text>
@@ -1253,4 +1288,16 @@ const styles = StyleSheet.create({
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, marginBottom: 12 },
   checkboxBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   checkboxLabel: { color: '#333', flex: 1 },
+
+  tabRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  tabBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
+  tabBtnActive: { backgroundColor: '#fff5e6' },
+  tabText: { color: '#333', fontWeight: '600' },
+  tabTextActive: { color: '#000', fontWeight: '800' },
+
+  groupItem: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  groupIconWrap: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#f3f0ee', alignItems: 'center', justifyContent: 'center' },
+
+  applyBtnDisabled: { marginHorizontal: 16, marginBottom: 12, height: 48, borderRadius: 24, backgroundColor: '#f3efe9', alignItems: 'center', justifyContent: 'center' },
+  applyBtnText: { color: '#777', fontWeight: '700' },
 });
