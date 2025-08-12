@@ -18,31 +18,34 @@ function BackFab() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
-  const hideOn = useMemo(() => {
-    const tabRoots = [
-      "/(tabs)",
-      "/(tabs)/index",
-      "/(tabs)/groups",
-      "/(tabs)/savings",
-      "/(tabs)/chats",
-      "/(tabs)/loans",
-      "/(tabs)/profile",
-      "/index",
-      "/",
-    ];
-    return new Set(tabRoots);
-  }, []);
+  const isRootOrTabRoot = useMemo(() => {
+    try {
+      if (!pathname) return true;
+      if (pathname === "/" || pathname === "/index") return true;
+      const segs = pathname.split("/").filter(Boolean);
+      if (segs[0] === "(tabs)") {
+        const tabIds = new Set(["index", "groups", "savings", "chats", "loans", "profile"]);
+        if (segs.length === 1) return true;
+        if (segs.length === 2 && tabIds.has(segs[1])) return true;
+      }
+      return false;
+    } catch (e) {
+      console.log("[BackFab] path parse error", e);
+      return false;
+    }
+  }, [pathname]);
 
   const canGoBack = useMemo(() => {
     try {
       const base = router.canGoBack?.() || false;
       if (!base) return false;
-      if (pathname && hideOn.has(pathname)) return false;
+      if (isRootOrTabRoot) return false;
       return true;
-    } catch {
+    } catch (e) {
+      console.log("[BackFab] canGoBack error", e);
       return false;
     }
-  }, [router, pathname, hideOn]);
+  }, [router, isRootOrTabRoot]);
 
   if (!canGoBack) return null;
 
