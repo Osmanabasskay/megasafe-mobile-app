@@ -221,6 +221,9 @@ export default function GroupsScreen() {
       const admin = membersList.find((m) => m.role === 'Admin');
       const base = {
         ...g,
+        frequency: g.frequency || 'Monthly',
+        startDate: g.startDate || new Date().toISOString().slice(0,10),
+        amount: typeof g.amount === 'number' ? g.amount : Number(g.amount || 0),
         members: membersList.length || g.members || 1,
         joinRequests: g.joinRequests || [],
         paymentsLedger: g.paymentsLedger || [],
@@ -633,7 +636,7 @@ export default function GroupsScreen() {
           </View>
           <View style={styles.detailRow}>
             <DollarSign color="#FFA500" size={16} />
-            <Text style={styles.detailText}>{formatCurrency(group.amount)} {group.frequency.toLowerCase()}</Text>
+            <Text style={styles.detailText}>{formatCurrency(group.amount)} {String(group.frequency ?? '').toLowerCase()}</Text>
           </View>
           <View style={styles.detailRow}>
             <Calendar color="#666" size={16} />
@@ -734,7 +737,7 @@ export default function GroupsScreen() {
             <>
               <Text style={styles.confirmMessage}>Send a request to join {selectedGroup.name}. Admin approval is required.</Text>
               <View style={styles.confirmDetails}>
-                <Text style={styles.confirmDetailText}>• Contribution: {formatCurrency(selectedGroup.amount)} {selectedGroup.frequency.toLowerCase()}</Text>
+                <Text style={styles.confirmDetailText}>• Contribution: {formatCurrency(selectedGroup.amount)} {String(selectedGroup.frequency ?? '').toLowerCase()}</Text>
                 <Text style={styles.confirmDetailText}>• Start Date: {new Date(selectedGroup.startDate).toLocaleDateString()}</Text>
                 <Text style={styles.confirmDetailText}>• Members: {Math.min(selectedGroup.members + 1, selectedGroup.maxMembers)}/{selectedGroup.maxMembers}</Text>
               </View>
@@ -1269,7 +1272,7 @@ export default function GroupsScreen() {
               <View style={styles.groupDetails}>
                 <View style={styles.detailRow}>
                   <DollarSign color="#FFA500" size={16} />
-                  <Text style={styles.detailText}>{formatCurrency(g.amount)} {g.frequency.toLowerCase()}</Text>
+                  <Text style={styles.detailText}>{formatCurrency(g.amount)} {String(g.frequency ?? '').toLowerCase()}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Calendar color="#666" size={16} />
