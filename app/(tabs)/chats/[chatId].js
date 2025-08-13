@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Image, Linking, Alert, Animated, Easing, ScrollView, Keyboard } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams } from 'expo-router';
 import { Send, Mic, Camera as CameraIcon, Image as ImageIcon, Paperclip, Play, Pause, X, Check, Smile, FileText, Headphones, Calendar, BarChart3 } from 'lucide-react-native';
@@ -9,6 +10,7 @@ import { Audio } from 'expo-av';
 
 export default function ChatRoom() {
   const { chatId } = useLocalSearchParams();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [recording, setRecording] = useState(null);
@@ -53,6 +55,19 @@ export default function ChatRoom() {
       return () => animations.forEach(a => a.stop());
     }
   }, [isRecording, waveAnim]);
+
+  const scrollToBottom = () => {
+    try { listRef.current?.scrollToEnd?.({ animated: true }); } catch (e) { console.log('scrollToBottom err', e); }
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', scrollToBottom);
+    const hideSub = Keyboard.addListener('keyboardDidHide', scrollToBottom);
+    return () => {
+      try { showSub.remove(); } catch {}
+      try { hideSub.remove(); } catch {}
+    };
+  }, []);
 
   const persist = async (next) => {
     try { await AsyncStorage.setItem('chat:'+chatId, JSON.stringify(next)); } catch (e) { console.log('persist err', e); }
@@ -329,7 +344,7 @@ export default function ChatRoom() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><Text style={styles.headerTitle}>{title}</Text></View>
-      <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={styles.flex1}>
+      <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} keyboardVerticalOffset={Platform.OS==='ios' ? (insets.top + 56) : 0} style={styles.flex1}>
         <FlatList
           ref={listRef}
           data={messages}
