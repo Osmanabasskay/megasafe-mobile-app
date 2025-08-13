@@ -530,8 +530,8 @@ const styles = StyleSheet.create({
   timeTheirs: { color: '#6b7280' },
 
   attachSheet: { backgroundColor: '#fff', marginHorizontal: 10, marginBottom: 8, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#eee' },
-  attachGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  attachTile: { width: '23%', alignItems: 'center', marginBottom: 18 },
+  attachGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start', gap: 12 },
+  attachTile: { width: '30%', alignItems: 'center', marginBottom: 18 },
   tileIconWrap: { width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   tileLabel: { marginTop: 8, color: '#6B7280', fontWeight: '600' },
 
