@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   sectionHeader: { fontSize: 18, fontWeight: '800', color: palette.text },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 8 },
-  featureWrap: { width: 168, padding: 8 },
+  featureWrap: { width: '48%', padding: 8 },
   featureInnerSquare: { backgroundColor: '#fff', borderRadius: 18, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 14, elevation: 4, padding: 12, borderWidth: 1, borderColor: '#E6ECFF' },
   iconBgSquare: { width: 120, height: 88, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   tileText: { marginTop: 10, fontWeight: '800', color: palette.text, fontSize: 13, textAlign: 'center' },
